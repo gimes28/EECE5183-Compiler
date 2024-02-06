@@ -1,0 +1,13 @@
+CC = g++
+CFLAGS = -Wall -g
+
+BUILDDIR = ../Build
+
+Lexer: Lexer.o 
+	$(CC) $(CFLAGS) -o $(BUILDDIR)/Lexer $(BUILDDIR)/Lexer.o
+
+Lexer.o: Lexer.cpp
+	$(CC) $(CFLAGS) -c Src/Lexer.cpp $(BUILDDIR)/Lexer.o
+
+clean:
+	rm $(BUILDDIR)/Lexer $(BUILDDIR)/Lexer.o
