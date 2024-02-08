@@ -15,10 +15,10 @@ int main(int argc, char* args[])
     else
         std::cout << "File Loaded: "<< args[1] << std::endl;
 
-    Token token = Token();
-    while(token.tt != T_EOF){
-        token = lexer.ScanToken();
-        std::cout << token.tt << std::endl;
+    Token tok = Token();
+    while(tok.tt != T_EOF){
+        tok = lexer.ScanToken();
+        //std::cout << tok.tt << "" << tok.val.stringVal << std::endl;
     }
     return 0;
 }

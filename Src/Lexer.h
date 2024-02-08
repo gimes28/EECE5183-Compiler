@@ -21,16 +21,18 @@ class Lexer{
         ~Lexer();
         bool LoadFile(std::string fileName);
         Token ScanToken();
+        int getCharClass(char t);
+        char getChar();
+        void unGetChar();
+        int getLineNumber();        
         
         // Scan for individual tokens: ( ) { } etc...
         // Scan for white space: // /**/ " " etc...
     private:
         std::ifstream file;
         std::unordered_map<char, CharClass> charClass;
-        int getCharClass(char t);
-
-        int scanToken();        
-        int lineNum;
+        //Token scanToken();        
+        int lineCount = 0;
 };
 
 #endif

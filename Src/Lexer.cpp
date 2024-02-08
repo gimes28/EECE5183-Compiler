@@ -1,5 +1,6 @@
 #include "Lexer.h"
 #include "Token.h"
+#include "Error.h"
 #include <iostream>
 
 Lexer::Lexer(){
@@ -29,7 +30,6 @@ Lexer::Lexer(){
     charClass[':'] = SPECIAL;
     charClass[';'] = SPECIAL;
     charClass['\"'] = SPECIAL;
-    charClass['|'] = SPECIAL;
     charClass[','] = SPECIAL;
     charClass['.'] = SPECIAL;
     charClass['<'] = SPECIAL;
@@ -99,54 +99,15 @@ Lexer::~Lexer(){
 bool Lexer::LoadFile(std::string fileName){
     file.open(fileName);
     if(file.is_open()){
+        lineCount = 1;
         return true;
     }
+    Error::ReportError(ERROR_FAIL_TO_OPEN, "Cannot open file: " + fileName);
     return false;
 }
 
-Token Lexer::ScanToken(){
-    Token token = Token();
-    token.tt = scanToken();
-    return token;
-}
-
-int Lexer::scanToken(){
-    
-    if(!file.is_open()){
-        // report error
-        return T_EOF;
-    }
-
-    char ch = file.get();
-    int chClass = getCharClass(ch);
-
-    // remove whitespace
-
-    while (chClass == SPACE){
-        ch = file.get();
-        chClass = getCharClass(ch);
-    }
-
-    switch(ch){
-    case(NUM):
-
-    return T_FLOAT;
-    case(SPECIAL):
-    return T_SEMICOLON;
-    case(LOWER_ALPHA):
-    return T_IDENTIFIER;
-    case(UPPER_ALPHA):
-    return T_IDENTIFIER;
-    default:
-    if(ch == EOF) return T_EOF;
-    return T_UNK;
-    }
-
-
-    while(!file.eof()){
-        std::cout << (char)file.get() << std::endl;
-    }
-    return T_EOF;
+int Lexer::getLineNumber(){
+    return lineCount;
 }
 
 int Lexer::getCharClass(char t){
@@ -155,4 +116,153 @@ int Lexer::getCharClass(char t){
         return -1;
     }
     return charClass[t];
+}
+
+Token Lexer::ScanToken(){
+    Token tok = Token();
+    if(!file.is_open()){
+        // report error
+        tok.tt = T_UNK;
+        return tok;
+    }
+    
+    char nextCh, ch;
+    int chClass;
+
+    // remove whitespace   
+    do {
+        do{
+            ch = file.get();
+            if(ch == '\n')
+                lineCount++;
+            chClass = getCharClass(ch);
+        } while(chClass == SPACE);
+    
+        if(ch == '/'){
+            nextCh = file.get();
+            //check for single line comment
+            if(nextCh == '/'){
+                do{
+                    nextCh = file.get();
+                }
+                while(nextCh != '\n' && nextCh != EOF);
+                file.unget();
+            }
+            //check for multiline comment
+            else if(nextCh == '*'){
+                int layer = 1;
+                while(layer > 0){
+                    nextCh = file.get();
+                    if(nextCh == '*'){
+                        nextCh = file.get();
+                        if(nextCh == '/'){
+                            layer--;
+                        }
+                    }
+                    else if(nextCh == '/'){
+                        nextCh = file.get();
+                        if(nextCh == '*')
+                            layer++;
+                    }
+                }
+            }
+            else{
+                file.unget();
+                break;
+            }
+        }
+    } while (chClass == SPACE || ch == '/');
+
+    int size = 0;
+    switch(chClass){
+    case(NUM):
+        tok.tt = T_INTEGER_CONST; break;
+    case(SPECIAL):
+        switch (ch)
+        {
+        case '&': tok.tt = T_AND; break;
+        case '(': tok.tt = T_LPAREN; break;
+        case ')': tok.tt = T_RPAREN; break;
+        case '-': tok.tt = T_MINUS; break;
+        case '+': tok.tt = T_PLUS; break;
+        case '*': tok.tt = T_MULTIPLY; break;
+        case '/': tok.tt = T_DIVIDE; break;
+        case '[': tok.tt = T_LBRACKET; break;
+        case ']': tok.tt = T_RBRACKET; break;
+        case '{': tok.tt = T_LBRACE; break;
+        case '}': tok.tt = T_RBRACE; break;
+        case '|': tok.tt = T_OR; break;
+        case ';': tok.tt = T_SEMICOLON; break;
+        case ',': tok.tt = T_COMMA; break;
+        case '.': tok.tt =  T_PERIOD; break;
+        case '<':
+            nextCh = file.get();
+            if (nextCh == '=')
+                tok.tt = T_LESS_EQ;
+            else
+                tok.tt = T_LESS;
+            break;
+        case '>':
+            nextCh = file.get();
+            if (nextCh == '=')
+                tok.tt = T_GREATER_EQ;
+            else
+                tok.tt = T_GREATER;
+            break;
+        case '=':
+            nextCh = file.get();
+            if (nextCh == '=')
+                tok.tt = T_EQUAL;
+            else 
+                tok.tt = T_UNK;
+            break;
+        case '!': 
+            nextCh = file.get();
+            if (nextCh == '=')
+                tok.tt = T_NOT_EQUAL;
+            else
+                tok.tt = T_NOT; 
+            break;
+        case ':': 
+            nextCh = file.get();
+            if(nextCh == '=')
+                tok.tt = T_ASSIGNMENT;
+            else
+                tok.tt = T_UNK; 
+            break;
+        case '\"': 
+            tok.tt = T_STRING_CONST;
+
+            nextCh = file.get();
+            while(nextCh != '\"'){
+                if(nextCh == '\n' || nextCh == EOF) {
+                    tok.tt = T_UNK;
+                    // Report Error
+                    break;
+                } else if (size >= 255){
+                    tok.tt = T_UNK;
+                    // Report Error
+                    break;
+                }
+
+                tok.val.stringVal[size++] = '\0';
+                break;
+            }
+        default:
+            tok.tt = T_UNK;
+            //errorStatus = true;
+            break;
+        }
+    case(LOWER_ALPHA):
+        tok.tt = T_IDENTIFIER; break;
+    case(UPPER_ALPHA):
+        tok.tt = T_IDENTIFIER; break;
+    default: 
+        if(ch == EOF)
+            tok.tt = T_EOF;
+        else 
+            tok.tt = T_UNK;
+        break;
+    }
+    return tok;
 }

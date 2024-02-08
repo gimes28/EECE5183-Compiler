@@ -62,7 +62,7 @@ enum TokenType {
 };
 
 struct Token{
-    int tt;
+    TokenType tt;
     union 
     {
         char stringVal[256];
