@@ -2,6 +2,8 @@
 #include "Token.h"
 #include "Error.h"
 #include <iostream>
+#include <iomanip>
+#include <string>
 
 Lexer::Lexer(){
     charClass['0'] = NUM;
@@ -14,27 +16,6 @@ Lexer::Lexer(){
     charClass['7'] = NUM;
     charClass['8'] = NUM;
     charClass['9'] = NUM;
-    charClass['!'] = SPECIAL;
-    charClass['&'] = SPECIAL;
-    charClass['*'] = SPECIAL;
-    charClass['('] = SPECIAL;
-    charClass[')'] = SPECIAL;
-    charClass['-'] = SPECIAL;
-    charClass['='] = SPECIAL;
-    charClass['+'] = SPECIAL;
-    charClass['['] = SPECIAL;
-    charClass[']'] = SPECIAL;
-    charClass['{'] = SPECIAL;
-    charClass['}'] = SPECIAL;
-    charClass['|'] = SPECIAL;
-    charClass[':'] = SPECIAL;
-    charClass[';'] = SPECIAL;
-    charClass['\"'] = SPECIAL;
-    charClass[','] = SPECIAL;
-    charClass['.'] = SPECIAL;
-    charClass['<'] = SPECIAL;
-    charClass['>'] = SPECIAL;
-    charClass['/'] = SPECIAL;
     charClass['a'] = LOWER_ALPHA;
     charClass['b'] = LOWER_ALPHA;
     charClass['c'] = LOWER_ALPHA;
@@ -87,6 +68,27 @@ Lexer::Lexer(){
     charClass['X'] = UPPER_ALPHA;
     charClass['Y'] = UPPER_ALPHA;
     charClass['Z'] = UPPER_ALPHA;
+    charClass['!'] = SPECIAL;
+    charClass['&'] = SPECIAL;
+    charClass['*'] = SPECIAL;
+    charClass['('] = SPECIAL;
+    charClass[')'] = SPECIAL;
+    charClass['-'] = SPECIAL;
+    charClass['='] = SPECIAL;
+    charClass['+'] = SPECIAL;
+    charClass['['] = SPECIAL;
+    charClass[']'] = SPECIAL;
+    charClass['{'] = SPECIAL;
+    charClass['}'] = SPECIAL;
+    charClass['|'] = SPECIAL;
+    charClass[':'] = SPECIAL;
+    charClass[';'] = SPECIAL;
+    charClass['\"'] = SPECIAL;
+    charClass[','] = SPECIAL;
+    charClass['.'] = SPECIAL;
+    charClass['<'] = SPECIAL;
+    charClass['>'] = SPECIAL;
+    charClass['/'] = SPECIAL;
     charClass[' '] = SPACE;
     charClass['\t'] = SPACE;
     charClass['\n'] = SPACE;
@@ -110,9 +112,35 @@ int Lexer::getLineNumber(){
     return lineCount;
 }
 
+void Lexer::SetDebugOption(bool opt){
+    debugOption = opt;
+}
+
+bool Lexer::GetDebugOption(){
+    return debugOption;
+}
+
+void Lexer::Debug(Token tok){
+    if(debugOption){
+        std::cout << "Token: ";
+        std::cout << std::setw(4) << getTokenTypeName(tok.tt) << " ";
+        switch(tok.tt) {
+        case(T_INTEGER_CONST):
+            std::cout << tok.val.intVal;
+            break;
+        case(T_DOUBLE_CONST):
+            std::cout << tok.val.doubleVal;
+            break;
+        case(T_STRING_CONST || T_IDENTIFIER):
+            std::cout << tok.val.stringVal;
+        }
+        std::cout << std::endl;
+    }
+}
+
 int Lexer::getCharClass(char t){
     if(charClass.find(t) == charClass.end()){
-        // Return error for invalid token or eof
+        Error::ReportError(ERROR_INVALID_TYPE, "Invalid Type: " + t);
         return -1;
     }
     return charClass[t];
@@ -121,14 +149,13 @@ int Lexer::getCharClass(char t){
 Token Lexer::ScanToken(){
     Token tok = Token();
     if(!file.is_open()){
-        // report error
+        Error::ReportError(ERROR_FAIL_TO_OPEN, "File failed to open");
         tok.tt = T_UNK;
         return tok;
     }
     
     char nextCh, ch;
     int chClass;
-
     // remove whitespace   
     do {
         do{
@@ -136,8 +163,10 @@ Token Lexer::ScanToken(){
             if(ch == '\n')
                 lineCount++;
             chClass = getCharClass(ch);
+            if (chClass == INVALID){
+                Error::ReportError(ERROR_INVALID_TYPE, "Invalid Charactor");
+            }
         } while(chClass == SPACE);
-    
         if(ch == '/'){
             nextCh = file.get();
             //check for single line comment
@@ -164,6 +193,11 @@ Token Lexer::ScanToken(){
                         if(nextCh == '*')
                             layer++;
                     }
+                    // Can break with no closing comment
+                    if(nextCh == '\n')
+                        lineCount++;
+                    else if (nextCh == EOF)
+                        break;
                 }
             }
             else{
@@ -171,98 +205,141 @@ Token Lexer::ScanToken(){
                 break;
             }
         }
-    } while (chClass == SPACE || ch == '/');
+    } while (ch == '/');
 
     int size = 0;
+    std::string val = "";
     switch(chClass){
-    case(NUM):
-        tok.tt = T_INTEGER_CONST; break;
-    case(SPECIAL):
+    case(SPECIAL):{
         switch (ch)
         {
-        case '&': tok.tt = T_AND; break;
-        case '(': tok.tt = T_LPAREN; break;
-        case ')': tok.tt = T_RPAREN; break;
-        case '-': tok.tt = T_MINUS; break;
-        case '+': tok.tt = T_PLUS; break;
-        case '*': tok.tt = T_MULTIPLY; break;
-        case '/': tok.tt = T_DIVIDE; break;
-        case '[': tok.tt = T_LBRACKET; break;
-        case ']': tok.tt = T_RBRACKET; break;
-        case '{': tok.tt = T_LBRACE; break;
-        case '}': tok.tt = T_RBRACE; break;
-        case '|': tok.tt = T_OR; break;
-        case ';': tok.tt = T_SEMICOLON; break;
-        case ',': tok.tt = T_COMMA; break;
-        case '.': tok.tt =  T_PERIOD; break;
-        case '<':
-            nextCh = file.get();
-            if (nextCh == '=')
-                tok.tt = T_LESS_EQ;
-            else
-                tok.tt = T_LESS;
+            case '&': tok.tt = T_AND; break;
+            case '(': tok.tt = T_LPAREN; break;
+            case ')': tok.tt = T_RPAREN; break;
+            case '-': tok.tt = T_MINUS; break;
+            case '+': tok.tt = T_PLUS; break;
+            case '*': tok.tt = T_MULTIPLY; break;
+            case '/': tok.tt = T_DIVIDE; break;
+            case '[': tok.tt = T_LBRACKET; break;
+            case ']': tok.tt = T_RBRACKET; break;
+            case '{': tok.tt = T_LBRACE; break;
+            case '}': tok.tt = T_RBRACE; break;
+            case '|': tok.tt = T_OR; break;
+            case ';': tok.tt = T_SEMICOLON; break;
+            case ',': tok.tt = T_COMMA; break;
+            case '.': tok.tt = T_PERIOD; 
             break;
-        case '>':
-            nextCh = file.get();
-            if (nextCh == '=')
-                tok.tt = T_GREATER_EQ;
-            else
-                tok.tt = T_GREATER;
-            break;
-        case '=':
-            nextCh = file.get();
-            if (nextCh == '=')
-                tok.tt = T_EQUAL;
-            else 
-                tok.tt = T_UNK;
-            break;
-        case '!': 
-            nextCh = file.get();
-            if (nextCh == '=')
-                tok.tt = T_NOT_EQUAL;
-            else
-                tok.tt = T_NOT; 
-            break;
-        case ':': 
-            nextCh = file.get();
-            if(nextCh == '=')
-                tok.tt = T_ASSIGNMENT;
-            else
-                tok.tt = T_UNK; 
-            break;
-        case '\"': 
-            tok.tt = T_STRING_CONST;
-
-            nextCh = file.get();
-            while(nextCh != '\"'){
-                if(nextCh == '\n' || nextCh == EOF) {
-                    tok.tt = T_UNK;
-                    // Report Error
-                    break;
-                } else if (size >= 255){
-                    tok.tt = T_UNK;
-                    // Report Error
-                    break;
+            case '<':
+                ch = file.get();
+                if (ch == '=')
+                    tok.tt = T_LESS_EQ;
+                else{
+                    tok.tt = T_LESS;
+                    file.unget();
                 }
-
-                tok.val.stringVal[size++] = '\0';
                 break;
-            }
-        default:
-            tok.tt = T_UNK;
-            //errorStatus = true;
-            break;
+            case '>':
+                ch = file.get();
+                if (ch == '=')
+                    tok.tt = T_GREATER_EQ;
+                else{
+                    tok.tt = T_GREATER;
+                    file.unget();
+                }
+                break;
+            case '=':
+                ch = file.get();
+                if (ch == '=')
+                    tok.tt = T_EQUAL;
+                else {
+                    tok.tt = T_UNK;
+                    file.unget();
+                }
+                break;
+            case '!': 
+                ch = file.get();
+                if (ch == '=')
+                    tok.tt = T_NOT_EQUAL;
+                else{
+                    tok.tt = T_NOT;
+                    file.unget(); 
+                }
+                break;
+            case ':': 
+                ch = file.get();
+                if(ch == '=')
+                    tok.tt = T_ASSIGNMENT;
+                else
+                    tok.tt = T_UNK;                 
+                break;
+            case '\"': 
+                tok.tt = T_STRING_CONST;
+
+                ch = file.get();
+                while(ch != '\"'){
+                    if(ch == '\n')
+                        lineCount++;
+                    else if (ch == EOF){
+                        tok.tt = T_UNK;
+                        Error::ReportError(ERROR_UNKNOWN, "String missing ending quote");
+                        break;
+                    } 
+                    else if (size >= 255){
+                        tok.tt = T_UNK;
+                        Error::ReportError(ERROR_UNKNOWN, "String is too large");
+                        break;
+                    }
+                    tok.val.stringVal[size++] = ch;
+                    ch = file.get();
+                }
+                tok.val.stringVal[size] = '0';
+                break;
+            default:
+                tok.tt = T_UNK;
+                break;
         }
+        break;
+    }
+    case(NUM):{
+        do{            
+            if(ch != '_'){
+                val += ch;
+            }
+            ch = file.get();
+        } while(getCharClass(ch) == NUM || ch == '_');
+
+        //check for float value
+        if (ch == '.'){
+            do{
+                if(ch != '_'){
+                    val += ch;
+                }
+            } while(getCharClass(ch) == NUM || ch == '_');
+            tok.val.doubleVal += std::stod(val);
+            tok.tt = T_DOUBLE_CONST;
+            file.unget();
+        }
+        //integer value
+        else{
+            tok.val.intVal += std::stoi(val);
+            tok.tt = T_INTEGER_CONST;
+            file.unget();
+        }
+        break;
+    }
     case(LOWER_ALPHA):
-        tok.tt = T_IDENTIFIER; break;
     case(UPPER_ALPHA):
         tok.tt = T_IDENTIFIER; break;
-    default: 
+    default: {
         if(ch == EOF)
             tok.tt = T_EOF;
         else 
             tok.tt = T_UNK;
         break;
     }
+    }
+
+    Debug(tok);
+
     return tok;
 }

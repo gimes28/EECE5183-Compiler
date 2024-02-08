@@ -11,8 +11,9 @@ enum CharClass {
     NUM,
     LOWER_ALPHA,
     UPPER_ALPHA,
+    SPECIAL,
     SPACE,
-    SPECIAL
+    INVALID = -1
 };
 
 class Lexer{
@@ -24,7 +25,11 @@ class Lexer{
         int getCharClass(char t);
         char getChar();
         void unGetChar();
-        int getLineNumber();        
+        int getLineNumber();
+        void SetDebugOption(bool opt);
+        bool GetDebugOption();
+
+        void Debug(Token tok);
         
         // Scan for individual tokens: ( ) { } etc...
         // Scan for white space: // /**/ " " etc...
@@ -33,6 +38,7 @@ class Lexer{
         std::unordered_map<char, CharClass> charClass;
         //Token scanToken();        
         int lineCount = 0;
+        bool debugOption = false;
 };
 
 #endif

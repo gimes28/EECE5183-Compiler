@@ -1,6 +1,0 @@
-	rm $(BUILDDIR)/Lexer $(BUILDDIR)/Lexer.o
-Lexer: Lexer.o 
-	$(CC) $(CFLAGS) -o $(BUILDDIR)/Lexer $(BUILDDIR)/Lexer.o
-
-Lexer.o: Lexer.cpp
-	$(CC) $(CFLAGS) -c Src/Lexer.cpp $(BUILDDIR)/Lexer.o

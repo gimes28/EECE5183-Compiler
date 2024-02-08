@@ -61,6 +61,8 @@ enum TokenType {
     T_UNK = 350
 };
 
+const char* getTokenTypeName(TokenType t);
+
 struct Token{
     TokenType tt;
     union 

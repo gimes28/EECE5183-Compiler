@@ -1,11 +1,11 @@
-#include <iostream>
 #include "Lexer.h"
 #include "Token.h"
+#include "Error.h"
+
+#include <iostream>
 
 int main(int argc, char* args[])
 {
-    std::cout << "Hello World\n";
-
     if (argc < 2) 
        std::cout << "Less than 2 argc" << std::endl;
 
@@ -15,10 +15,13 @@ int main(int argc, char* args[])
     else
         std::cout << "File Loaded: "<< args[1] << std::endl;
 
+    lexer.SetDebugOption(true);
+
     Token tok = Token();
     while(tok.tt != T_EOF){
         tok = lexer.ScanToken();
-        //std::cout << tok.tt << "" << tok.val.stringVal << std::endl;
+        std::cout << lexer.getLineNumber() << ": " << tok.tt << " \n";
     }
+    //Error::PrintErrorList();
     return 0;
 }
