@@ -1,0 +1,11 @@
+CC = g++
+CFLAGS = -Wall -g
+
+BUILDDIR = ../Build
+SRC = $(wildcard Src/*.cpp)
+
+Main: $(SRC)
+	$(CC) $(SRC) -o Main
+
+clean:
+	rm Main

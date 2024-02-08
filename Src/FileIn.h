@@ -11,6 +11,8 @@ class FileIn{
         FileIn();
         FileIn(std::string fileInName);
 
+        
+
         void SetFileInName(std::string fileInName);
         std::string GetFileInName();
     
