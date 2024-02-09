@@ -1,9 +1,13 @@
 #include "Lexer.h"
 #include "Token.h"
 #include "Error.h"
+#include "SymbolTable.h"
+
 #include <iostream>
 #include <iomanip>
 #include <string>
+
+SymbolTable symTable;
 
 Lexer::Lexer(){
     charClass['0'] = NUM;
@@ -123,7 +127,7 @@ bool Lexer::GetDebugOption(){
 void Lexer::Debug(Token tok){
     if(debugOption){
         std::cout << "Token: ";
-        std::cout << std::setw(4) << getTokenTypeName(tok.tt) << " ";
+        std::cout << std::setw(4) << getTokenTypeName(tok) << " ";
         switch(tok.tt) {
         case(T_INTEGER_CONST):
             std::cout << tok.val.intVal;
@@ -141,9 +145,24 @@ void Lexer::Debug(Token tok){
 int Lexer::getCharClass(char t){
     if(charClass.find(t) == charClass.end()){
         Error::ReportError(ERROR_INVALID_TYPE, "Invalid Type: " + t);
-        return -1;
+        return EOF;
     }
     return charClass[t];
+}
+
+void Lexer::PopSymbolTable(Token tok){
+    std::string val = "";
+    switch(tok.tt) {
+    case(T_INTEGER_CONST):
+        val = std::to_string(tok.val.intVal);
+        break;
+    case(T_DOUBLE_CONST):
+        val = std::to_string(tok.val.doubleVal);
+        break;
+    case(T_STRING_CONST || T_IDENTIFIER):
+        val = tok.val.stringVal;
+    }
+    symTable.setSymbol(val, tok);
 }
 
 Token Lexer::ScanToken(){
@@ -329,7 +348,27 @@ Token Lexer::ScanToken(){
     }
     case(LOWER_ALPHA):
     case(UPPER_ALPHA):
-        tok.tt = T_IDENTIFIER; break;
+        do {
+            //keywords and identifiers are stored lower
+            size = 0;
+            if (chClass == UPPER_ALPHA){
+                ch += ('a' - 'A');
+            }
+            tok.val.stringVal[size++] += ch;
+            std::cout << ch << std::endl; 
+            ch = file.get();
+            chClass = getCharClass(ch);
+        } while (chClass == UPPER_ALPHA || chClass == LOWER_ALPHA ||  
+                chClass == NUM || ch == '_');
+        file.unget();
+
+        if(symTable.hasSymbol(tok.val.stringVal)){
+            tok.tt = symTable.getSymbol(tok.val.stringVal).tt;
+        }
+        else{
+            tok.tt = T_IDENTIFIER;
+        }
+        break;
     default: {
         if(ch == EOF)
             tok.tt = T_EOF;
@@ -340,6 +379,7 @@ Token Lexer::ScanToken(){
     }
 
     Debug(tok);
+    PopSymbolTable(tok);
 
     return tok;
 }

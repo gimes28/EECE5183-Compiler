@@ -1,6 +1,7 @@
 #include "Lexer.h"
 #include "Token.h"
 #include "Error.h"
+#include "SymbolTable.h"
 
 #include <iostream>
 
@@ -21,6 +22,21 @@ int main(int argc, char* args[])
     while(tok.tt != T_EOF){
         tok = lexer.ScanToken();
         std::cout << lexer.getLineNumber() << ": " << tok.tt << " \n";
+    }
+
+    std::cout << "Symbol Table: " << std::endl;
+    for(SymbolTableMap::iterator it = symTable.begin(); it != symTable.end(); it++){
+        std::cout << getTokenTypeName(it->second) << " ";
+        switch(it->second.tt) {
+        case(T_INTEGER_CONST):
+            std::cout << it->second.val.intVal << std::endl;
+            break;
+        case(T_DOUBLE_CONST):
+            std::cout << it->second.val.doubleVal << std::endl;
+            break;
+        case(T_STRING_CONST || T_IDENTIFIER):
+            std::cout << it->second.val.stringVal << std::endl;
+        }
     }
     //Error::PrintErrorList();
     return 0;

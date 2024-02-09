@@ -23,20 +23,15 @@ class Lexer{
         bool LoadFile(std::string fileName);
         Token ScanToken();
         int getCharClass(char t);
-        char getChar();
-        void unGetChar();
         int getLineNumber();
         void SetDebugOption(bool opt);
         bool GetDebugOption();
 
         void Debug(Token tok);
-        
-        // Scan for individual tokens: ( ) { } etc...
-        // Scan for white space: // /**/ " " etc...
+        void PopSymbolTable(Token tok);
     private:
         std::ifstream file;
-        std::unordered_map<char, CharClass> charClass;
-        //Token scanToken();        
+        std::unordered_map<char, CharClass> charClass;    
         int lineCount = 0;
         bool debugOption = false;
 };

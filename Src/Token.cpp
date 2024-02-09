@@ -1,10 +1,10 @@
 #include "Token.h"
 
-const char* getTokenTypeName(TokenType tt){
+const char* getTokenTypeName(Token tok){
     static bool init;
-    static const char* typeNames[351];
+    static const char* names[351];
     if(!init){
-#define INSERT_ELEMENT(p) typeNames[p] = #p
+#define INSERT_ELEMENT(p) names[p] = #p
         INSERT_ELEMENT(T_PROGRAM);
         INSERT_ELEMENT(T_IS);
         INSERT_ELEMENT(T_BEGIN);
@@ -16,6 +16,7 @@ const char* getTokenTypeName(TokenType tt){
         INSERT_ELEMENT(T_DOUBLE);
         INSERT_ELEMENT(T_STRING);
         INSERT_ELEMENT(T_BOOL);
+        INSERT_ELEMENT(T_ENUM);
         INSERT_ELEMENT(T_IF);
         INSERT_ELEMENT(T_THEN);
         INSERT_ELEMENT(T_ELSE);
@@ -26,7 +27,6 @@ const char* getTokenTypeName(TokenType tt){
         INSERT_ELEMENT(T_FALSE);
         INSERT_ELEMENT(T_PERIOD);
         INSERT_ELEMENT(T_SEMICOLON);
-        INSERT_ELEMENT(T_COLON);
         INSERT_ELEMENT(T_LPAREN);
         INSERT_ELEMENT(T_RPAREN);
         INSERT_ELEMENT(T_COMMA);
@@ -56,5 +56,5 @@ const char* getTokenTypeName(TokenType tt){
 #undef INSERT_ELEMENT
         init = true;
     }
-    return typeNames[tt];
+    return names[tok.tt];
 }

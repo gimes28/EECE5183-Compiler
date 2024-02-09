@@ -10,10 +10,12 @@ enum TokenType {
     T_GLOBAL = 261,
     T_PROCEDURE = 262,
     T_VARIABLE = 263,
+    T_TYPE = 264,
     T_INTEGER = 265,
     T_DOUBLE = 266,
     T_STRING = 267,
     T_BOOL = 268,
+    T_ENUM = 269,
     T_IF = 270,
     T_THEN = 271,
     T_ELSE = 272,
@@ -26,7 +28,6 @@ enum TokenType {
     // Single char tokens
     T_PERIOD = '.',
     T_SEMICOLON = ';',
-    T_COLON = ':',
     T_LPAREN = '(',
     T_RPAREN = ')',
     T_COMMA = ',',
@@ -61,8 +62,6 @@ enum TokenType {
     T_UNK = 350
 };
 
-const char* getTokenTypeName(TokenType t);
-
 struct Token{
     TokenType tt;
     union 
@@ -72,5 +71,7 @@ struct Token{
         double doubleVal;
     } val;
 };
+
+const char* getTokenTypeName(Token tok);
 
 #endif
