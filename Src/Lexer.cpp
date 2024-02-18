@@ -289,7 +289,7 @@ Token Lexer::ScanToken(){
                 if(ch == '=')
                     tok.tt = T_ASSIGNMENT;
                 else
-                    tok.tt = T_UNK;                 
+                    tok.tt = T_COLON;                 
                 break;
             case '\"': 
                 tok.tt = T_STRING_CONST;

@@ -1,4 +1,5 @@
 #include "Lexer.h"
+#include "Parser.h"
 #include "Token.h"
 #include "Error.h"
 #include "SymbolTable.h"
@@ -11,7 +12,7 @@ int main(int argc, char* args[])
        std::cout << "Less than 2 argc" << std::endl;
 
     Lexer lexer;
-    if(!lexer.LoadFile(args[1])) 
+    /*if(!lexer.LoadFile(args[1])) 
         std::cout << "File not opened: " << args[1] << std::endl;
     else
         std::cout << "File Loaded: "<< args[1] << std::endl;
@@ -22,7 +23,8 @@ int main(int argc, char* args[])
     while(tok.tt != T_EOF){
         tok = lexer.ScanToken();
         std::cout << lexer.getLineNumber() << ": " << tok.tt << " \n";
-    }
+    }*/
+    Parser par(&lexer);
 
     std::cout << "Symbol Table: " << std::endl;
     for(SymbolTableMap::iterator it = symTable.begin(); it != symTable.end(); it++){

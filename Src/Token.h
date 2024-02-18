@@ -41,6 +41,7 @@ enum TokenType {
     T_DIVIDE = '/',
     T_LESS = '<',
     T_GREATER = '>',
+    T_COLON = ':',
     T_AND = '&',
     T_OR = '|',
 
