@@ -1,30 +1,23 @@
 #include "Error.h"
 
 #include <iostream>
-#include <vector>
-#include <tuple>
+#include <iomanip>
 
-typedef std::tuple<ErrorType, std::string> ErrorTuple;
-
-std::vector<ErrorTuple> ErrorList;
-std::vector<ErrorTuple> WarningList;
-
-void Error::ReportError(ErrorType err, std::string message){
-    ErrorList.push_back(ErrorTuple(err, message));
+Error::Error(){
+    errorTable[ERROR_INVALID_INPUT] = "Invalid input";
+    errorTable[ERROR_FAIL_TO_OPEN] = "Failed to open";
+    errorTable[ERROR_EOF] = "End of file";
+    errorTable[ERROR_MISSING_STRING_CLOSING] = "String missing ending quote";
 }
 
-void Error::ReportWarning(ErrorType war, std::string message){
-    WarningList.push_back(ErrorTuple(war, message));
+// Update Error file to include filename and line number
+
+void Error::ReportError(ErrorType err, std::string fileName, int lineNum){
+    std::cout << fileName << ":" << std::left << std::setw(15);
+    std::cout << lineNum << "   Error: " << errorTable[err] << std::endl;
 }
 
-void Error::PrintErrorList(){
-    for (ErrorTuple err : ErrorList){
-        std::cout << "Error: " << std::get<0>(err) << " " << std::get<1>(err) << std::endl;
-    }
-}
-
-void Error::PrintWarningList(){
-    for (ErrorTuple war : WarningList){
-        std::cout << "Error: " << std::get<0>(war) << " " << std::get<1>(war) << std::endl;
-    }
+void Error::ReportWarning(ErrorType war, std::string fileName, int lineNum){
+    std::cout << fileName << ":" << std::left << std::setw(15);
+    std::cout << lineNum << "   Warning: " << errorTable[war] << std::endl;
 }

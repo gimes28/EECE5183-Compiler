@@ -2,7 +2,7 @@
 
 const char* getTokenTypeName(Token tok){
     static bool init;
-    static const char* names[351];
+    static const char* names[100];
     if(!init){
 #define INSERT_ELEMENT(p) names[p] = #p
         INSERT_ELEMENT(T_PROGRAM);

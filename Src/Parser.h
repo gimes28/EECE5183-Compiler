@@ -12,6 +12,7 @@ class Parser {
     private:
         Token tok;
         Lexer* lexer;
+        bool IsTokenType(TokenType tok);
         bool Program();
         bool ProgramHeader();
         bool ProgramBody();

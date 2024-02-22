@@ -11,17 +11,26 @@ Parser::~Parser(){
 
 };
 
+bool Parser::IsTokenType(TokenType token){
+    if(token == tok.tt){
+        tok = lexer->InitScan();
+        return true;
+    }
+    return false;
+}
+
 bool Parser::Parse(){
-    tok = lexer->ScanToken();
+    tok = lexer->InitScan();
 
     if(!Program()){
         return false;
     }
 
-    while(tok.tt != T_EOF){
+    while(!IsTokenType(T_EOF)){
         if(!Program()){
             return false;
         }
+        std::cout << "Found Program"; 
     }
     return true;
 };
@@ -33,7 +42,7 @@ bool Parser::Program(){
     if (!ProgramBody())
         return false;
 
-    if (!tok.tt != T_PERIOD){
+    if (!IsTokenType(T_PERIOD)){
         std::cout << "Error: missing \'.\' at end of program" << std::endl;
         return false;
     }
@@ -41,13 +50,13 @@ bool Parser::Program(){
 };
 
 bool Parser::ProgramHeader(){
-    if (!tok.tt != T_PROGRAM)
+    if (!IsTokenType(T_PROGRAM))
         return false;
 
     if (!Identifier())
         return false;
 
-    if(!tok.tt != T_IS){
+    if(!IsTokenType(T_IS)){
         std::cout << "Error: Missing \'is\' in program header" << std::endl;
         return false;
     }
@@ -58,7 +67,7 @@ bool Parser::ProgramBody(){
     if (!Decleration())
         return false;
 
-    if (tok.tt != T_BEGIN){
+    if (IsTokenType(T_BEGIN)){
         std::cout << "Error: Missing \'begin\' in program body" << std::endl;
         return false;
     }
@@ -66,12 +75,12 @@ bool Parser::ProgramBody(){
     if (!Statement())
         return false;
     
-    if (tok.tt != T_END){
+    if (IsTokenType(T_END)){
         std::cout << "Error: Missing \'end\' in program body" << std::endl;
         return false;
     }
 
-    if (tok.tt != T_PROGRAM){
+    if (IsTokenType(T_PROGRAM)){
         std::cout << "Error: Missing \'program\' in program body" << std::endl;
         return false;
     }
@@ -79,7 +88,7 @@ bool Parser::ProgramBody(){
 };
 
 bool Parser::Decleration(){
-    if (tok.tt != T_GLOBAL){
+    if (IsTokenType(T_GLOBAL)){
         std::cout << "Error: Missing \'global\' in decleration" << std::endl;
         return false;
     }
@@ -106,7 +115,7 @@ bool Parser::ProcedureDeclaration(){
 };
 
 bool Parser::ProcedureHeader(){
-    if(tok.tt != T_PROCEDURE){
+    if(IsTokenType(T_PROCEDURE)){
         std::cout << "Error: Missing \'procedure\' in procedure header" << std::endl;
         return false;
     }
@@ -114,7 +123,7 @@ bool Parser::ProcedureHeader(){
     if (!Identifier())
         return false;
     
-    if(tok.tt != T_COLON){
+    if(IsTokenType(T_COLON)){
         std::cout << "Error: Missing \':\' in procedure header" << std::endl;
         return false;
     }
@@ -122,24 +131,25 @@ bool Parser::ProcedureHeader(){
     if(!TypeMark())
         return false;
     
-    if(tok.tt != T_LPAREN){
+    if(IsTokenType(T_LPAREN)){
         std::cout << "Error: Missing \'(\' in procedure header" << std::endl;
         return false;
     }
 
     ParameterList();
 
-    if(tok.tt != T_RPAREN){
+    if(IsTokenType(T_RPAREN)){
         std::cout << "Error: Missing \')\' in procedure header" << std::endl;
         return false;
     }
+    return true;
 };
 
 bool Parser::ParameterList(){
     if(!Parameter())
         return false;
 
-    if(tok.tt == T_COMMA){
+    if(IsTokenType(T_COMMA)){
         ParameterList();
     }
     return true;
@@ -149,13 +159,14 @@ bool Parser::Parameter(){
     if (!VariableDeclaration()){
         return false;
     }   
+    return true;
 };
 
 bool Parser::ProdecureBody(){
     if (!Decleration())
         return false;
 
-    if (tok.tt != T_BEGIN){
+    if (IsTokenType(T_BEGIN)){
         std::cout << "Error: Missing \'begin\' in procedure body" << std::endl;
         return false;
     }
@@ -163,12 +174,12 @@ bool Parser::ProdecureBody(){
     if (!Statement())
         return false;
     
-    if (tok.tt != T_END){
+    if (IsTokenType(T_END)){
         std::cout << "Error: Missing \'end\' in procedure body" << std::endl;
         return false;
     }
 
-    if (tok.tt != T_PROCEDURE){
+    if (IsTokenType(T_PROCEDURE)){
         std::cout << "Error: Missing \'procedure\' in procedure body" << std::endl;
         return false;
     }
@@ -176,7 +187,7 @@ bool Parser::ProdecureBody(){
 };
 
 bool Parser::VariableDeclaration(){
-    if (tok.tt != T_VARIABLE){
+    if (!IsTokenType(T_VARIABLE)){
         std::cout << "Error: Missing \'variable\' in variable decleration" << std::endl;
         return false;
     }
@@ -184,7 +195,7 @@ bool Parser::VariableDeclaration(){
     if (!Identifier())
         return false;
     
-    if(tok.tt != T_COLON){
+    if(!IsTokenType(T_COLON)){
         std::cout << "Error: Missing \':\' in variable decleration" << std::endl;
         return false;
     }
@@ -192,25 +203,24 @@ bool Parser::VariableDeclaration(){
     if(!TypeMark())
         return false;
     
-    if(tok.tt != T_LBRACKET){
-        std::cout << "Error: Missing \'[\' in variable decleration" << std::endl;
-        return false;
-    }
+    if(IsTokenType(T_LBRACKET)){
+        if(!Bound())
+            return false;
 
-    if(!Bound())
-        return false;
-
-    if(tok.tt != T_RBRACKET){
-        std::cout << "Error: Missing \']\' in variable decleration" << std::endl;
-        return false;
+        if(IsTokenType(T_RBRACKET)){
+            std::cout << "Error: Missing \']\' in variable decleration" << std::endl;
+            return false;
+        }
     }
+    return true;
 };
 
 bool Parser::TypeMark(){
-    if(tok.tt == T_INTEGER || tok.tt == T_DOUBLE || 
-    tok.tt == T_STRING || tok.tt == T_BOOL){
+    if(IsTokenType(T_INTEGER) || IsTokenType(T_DOUBLE) || 
+    IsTokenType(T_STRING) || IsTokenType(T_BOOL)){
         return true;
     }
+    return false;
 }
 
 bool Parser::Bound(){
@@ -239,12 +249,12 @@ bool Parser::ProcedureCall(){
     if(!Identifier())
         return false;
 
-    if(!tok.tt != T_LPAREN)
+    if(!IsTokenType(T_LPAREN))
         return false;
     
     ArgumentList();
 
-    if (!tok.tt != T_RPAREN){
+    if (!IsTokenType(T_RPAREN)){
         std::cout << "Error: Missing \')\' in Procedure Call" << std::endl;
         return false;
     }
@@ -255,7 +265,7 @@ bool Parser::AssignmentStatement(){
     if(!Destination())
         return false;
 
-    if (tok.tt != T_ASSIGNMENT){
+    if (!IsTokenType(T_ASSIGNMENT)){
         std::cout << "Error: Missing \':=\' in Assignment Statement" << std::endl;
         return false;
     }
@@ -270,27 +280,25 @@ bool Parser::Destination(){
     if(!Identifier())
         return false;
     
-    if(tok.tt != T_LBRACKET){
+    if(IsTokenType(T_LBRACKET)){         
+        if (!Expression())
+            return false;
         
-    }
-
-    if (!Expression())
-        return false;
-    
-    if (!tok.tt != T_RPAREN){
-        std::cout << "Error: Missing \')\' in Destination" << std::endl;
-        return false;
+        if (!IsTokenType(T_RPAREN)){
+            std::cout << "Error: Missing \')\' in Destination" << std::endl;
+            return false;
+        }   
     }
     return true; 
 }
 
 bool Parser::IfStatement(){
-    if (tok.tt != T_IF){
+    if (IsTokenType(T_IF)){
         std::cout << "Error: Missing \'if\' in If Statement" << std::endl;
         return false;
     }
 
-    if(tok.tt != T_LPAREN){
+    if(IsTokenType(T_LPAREN)){
         std::cout << "Error: Missing \'(\' in If Statement" << std::endl;
         return false;
     }
@@ -298,12 +306,12 @@ bool Parser::IfStatement(){
     if(!Expression())
         return false;
 
-    if(tok.tt != T_RPAREN){
+    if(IsTokenType(T_RPAREN)){
         std::cout << "Error: Missing \')\' in If Statement" << std::endl;
         return false;
     }
 
-    if(tok.tt != T_THEN){
+    if(IsTokenType(T_THEN)){
         std::cout << "Error: Missing \'then\' in If Statement" << std::endl;
         return false;
     }
@@ -311,17 +319,17 @@ bool Parser::IfStatement(){
     if(!Statement())
         return false;
 
-    if(tok.tt == T_ELSE){
+    if(IsTokenType(T_ELSE)){
         if(!Statement())
             return false;
     }
 
-    if(!tok.tt != T_END){
+    if(!IsTokenType(T_END)){
         std::cout << "Error: Missing \'End\' in If Statement" << std::endl;
         return false;
     }
 
-    if(!tok.tt != T_IF){
+    if(!IsTokenType(T_IF)){
         std::cout << "Error: Missing \'If\' in If Statement" << std::endl;
         return false;
     }
@@ -330,11 +338,11 @@ bool Parser::IfStatement(){
 }
 
 bool Parser::LoopStatement(){
-    if(tok.tt != T_FOR){
+    if(!IsTokenType(T_FOR)){
         return false;
     }
      
-    if (tok.tt != T_LPAREN){
+    if (!IsTokenType(T_LPAREN)){
         std::cout << "Error: Missing \'(\' in Loop Statement" << std::endl;
         return false;   
     }
@@ -342,7 +350,7 @@ bool Parser::LoopStatement(){
     if(!AssignmentStatement())
         return false;
 
-    if(tok.tt != T_SEMICOLON){
+    if(!IsTokenType(T_SEMICOLON)){
         std::cout << "Error: Missing \';\' in Loop Statement" << std::endl;
         return false;
     }
@@ -350,7 +358,7 @@ bool Parser::LoopStatement(){
     if(!Expression())
         return false;
 
-    if(tok.tt != T_RPAREN){
+    if(!IsTokenType(T_RPAREN)){
         std::cout << "Error: Missing \')\' in Loop Statement" << std::endl;
         return false;
     }
@@ -358,12 +366,12 @@ bool Parser::LoopStatement(){
     if(!Statement())
         return false;
     
-    if(!tok.tt != T_END){
+    if(!IsTokenType(T_END)){
         std::cout << "Error: Missing \'End\' in Loop Statement" << std::endl;
         return false;
     }
 
-    if(!tok.tt != T_FOR){
+    if(!IsTokenType(T_FOR)){
         std::cout << "Error: Missing \'For\' in Loop Statement" << std::endl;
         return false;
     }
@@ -371,7 +379,7 @@ bool Parser::LoopStatement(){
 }
 
 bool Parser::ReturnStatement(){
-    if (tok.tt != T_RETURN){
+    if (IsTokenType(T_RETURN)){
         std::cout << "Error: Missing \'Return\' in Return Statement" << std::endl;
         return false;
     }
@@ -383,11 +391,11 @@ bool Parser::ReturnStatement(){
 }
 
 bool Parser::Identifier(){
-    return (tok.tt != T_IDENTIFIER);
+    return (IsTokenType(T_IDENTIFIER));
 }
 
 bool Parser::Expression(){
-    if(tok.tt != T_NOT){
+    if(IsTokenType(T_NOT)){
 
     }
     if(!ArithOp())
@@ -400,7 +408,7 @@ bool Parser::Expression(){
 }
 
 bool Parser::ExpressionPrime(){
-    if (tok.tt != T_AND || tok.tt != T_OR){
+    if (IsTokenType(T_AND) || IsTokenType(T_OR)){
         if(!ArithOp())
             return false;
         
@@ -421,7 +429,7 @@ bool Parser::ArithOp(){
 }
 
 bool Parser::ArithOpPrime(){
-    if (tok.tt != T_PLUS || tok.tt != T_MINUS){
+    if (IsTokenType(T_PLUS) || IsTokenType(T_MINUS)){
         if(!Relation())
             return false;
         
@@ -442,12 +450,12 @@ bool Parser::Relation(){
 }
 
 bool Parser::RelationPrime(){
-    if(tok.tt != T_LESS || tok.tt != T_LESS_EQ || 
-        tok.tt != T_GREATER || tok.tt != T_GREATER_EQ || 
-        tok.tt != T_EQUAL || tok.tt != T_NOT_EQUAL){
+    if(IsTokenType(T_LESS) || IsTokenType(T_LESS_EQ) || 
+        IsTokenType(T_GREATER) || IsTokenType(T_GREATER_EQ) || 
+        IsTokenType(T_EQUAL) || IsTokenType(T_NOT_EQUAL)){
         if(!Term())
             return false;
-        if(!RelationPrime)
+        if(!RelationPrime())
             return false;
     }
     return true;
@@ -464,22 +472,22 @@ bool Parser::Term(){
 }
 
 bool Parser::TermPrime(){
-    if(tok.tt != T_MULTIPLY || tok.tt != T_DIVIDE){
+    if(IsTokenType(T_MULTIPLY) || IsTokenType(T_DIVIDE)){
         if(!Factor())
             return false;
 
-        if(!TermPrime)
+        if(!TermPrime())
             return false;
     }
     return true;
 }
 
 bool Parser::Factor(){
-    if(tok.tt == T_LPAREN){
+    if(IsTokenType(T_LPAREN)){
         if(!Expression())
             return false;
         
-        if(tok.tt != T_RPAREN){
+        if(IsTokenType(T_RPAREN)){
             std::cout << "Error: Missing \')\' in Expression Factor" << std::endl;
             return false;
         }
@@ -487,13 +495,13 @@ bool Parser::Factor(){
     else if(ProcedureCall()){
         Name();
     }
-    else if(tok.tt == T_MINUS){
+    else if(IsTokenType(T_MINUS)){
         Number();
     }
-    else if(tok.tt == T_STRING_CONST){
+    else if(IsTokenType(T_STRING_CONST)){
 
     }
-    else if(tok.tt == T_TRUE || tok.tt == T_FALSE){
+    else if(IsTokenType(T_TRUE) || IsTokenType(T_FALSE)){
 
     }
     else
@@ -505,11 +513,11 @@ bool Parser::Name(){
     if(!Identifier())
         return false;
     
-    if (tok.tt == T_LBRACKET){
+    if (IsTokenType(T_LBRACKET)){
         if(!Expression())
             return false;
         
-        if(tok.tt != T_RBRACKET){
+        if(IsTokenType(T_RBRACKET)){
             std::cout << "Error: Missing \']\' in Name" << std::endl;
             return false;
         }
@@ -517,10 +525,18 @@ bool Parser::Name(){
     return true;
 }
 
+bool Parser::ArgumentList(){
+    if(!Expression())
+        return false;
+    if(IsTokenType(T_COMMA))
+        return ArgumentList();
+    return true;
+}
+
 bool Parser::Number(){
-    return (tok.tt == T_INTEGER_CONST || tok.tt == T_DOUBLE_CONST);
+    return (IsTokenType(T_INTEGER_CONST) || IsTokenType(T_DOUBLE_CONST));
 }
 
 bool Parser::String(){
-    return tok.tt == T_STRING_CONST;
+    return IsTokenType(T_STRING_CONST);
 }

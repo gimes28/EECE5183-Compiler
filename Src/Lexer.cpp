@@ -8,6 +8,7 @@
 #include <string>
 
 SymbolTable symTable;
+Error errTable;
 
 Lexer::Lexer(){
     charClass['0'] = NUM;
@@ -103,17 +104,22 @@ Lexer::~Lexer(){
 }
 
 bool Lexer::LoadFile(std::string fileName){
+    lexFileName = fileName;
     file.open(fileName);
     if(file.is_open()){
         lineCount = 1;
         return true;
     }
-    Error::ReportError(ERROR_FAIL_TO_OPEN, "Cannot open file: " + fileName);
+    errTable.ReportError(ERROR_FAIL_TO_OPEN, lexFileName, lineCount);
     return false;
 }
 
 int Lexer::getLineNumber(){
     return lineCount;
+}
+
+std::string Lexer::getFileName(){
+    return lexFileName;
 }
 
 void Lexer::SetDebugOption(bool opt){
@@ -126,27 +132,27 @@ bool Lexer::GetDebugOption(){
 
 void Lexer::Debug(Token tok){
     if(debugOption){
-        std::cout << "Token: ";
-        std::cout << std::setw(4) << getTokenTypeName(tok) << " ";
+        std::cout << "Token: " << std::left;
+        std::cout << std::setw(20) << getTokenTypeName(tok);
         switch(tok.tt) {
         case(T_INTEGER_CONST):
-            std::cout << tok.val.intVal;
+            std::cout << tok.val.intVal << std::endl;
             break;
         case(T_DOUBLE_CONST):
-            std::cout << tok.val.doubleVal;
+            std::cout << tok.val.doubleVal << std::endl;
             break;
-        case(T_STRING_CONST || T_IDENTIFIER):
-            std::cout << tok.val.stringVal;
+        default:
+            std::cout << tok.val.stringVal << std::endl;
+            break;
         }
-        std::cout << std::endl;
-    }
+    }   
 }
 
 int Lexer::getCharClass(char t){
-    if(charClass.find(t) == charClass.end()){
-        Error::ReportError(ERROR_INVALID_TYPE, "Invalid Type: " + t);
+    if(t == EOF)
         return EOF;
-    }
+    else if(charClass.find(t) == charClass.end())
+        return INVALID;
     return charClass[t];
 }
 
@@ -159,33 +165,42 @@ void Lexer::PopSymbolTable(Token tok){
     case(T_DOUBLE_CONST):
         val = std::to_string(tok.val.doubleVal);
         break;
-    case(T_STRING_CONST || T_IDENTIFIER):
+    default:
         val = tok.val.stringVal;
     }
     symTable.setSymbol(val, tok);
 }
 
+Token Lexer::InitScan(){
+    Token tok = ScanToken();
+    Debug(tok);
+
+    PopSymbolTable(tok);
+    return tok;
+}
+
 Token Lexer::ScanToken(){
     Token tok = Token();
     if(!file.is_open()){
-        Error::ReportError(ERROR_FAIL_TO_OPEN, "File failed to open");
+        errTable.ReportError(ERROR_FAIL_TO_OPEN, lexFileName, lineCount);
         tok.tt = T_UNK;
         return tok;
     }
     
     char nextCh, ch;
     int chClass;
-    // remove whitespace   
+    std::string errorStr = "";
     do {
         do{
             ch = file.get();
+            chClass = getCharClass(ch);
             if(ch == '\n')
                 lineCount++;
-            chClass = getCharClass(ch);
-            if (chClass == INVALID){
-                Error::ReportError(ERROR_INVALID_TYPE, "Invalid Charactor");
+            else if (chClass == INVALID){
+                errTable.ReportError(ERROR_INVALID_INPUT, lexFileName, lineCount);
             }
-        } while(chClass == SPACE);
+        } while(chClass == SPACE || chClass == INVALID);
+
         if(ch == '/'){
             nextCh = file.get();
             //check for single line comment
@@ -226,7 +241,6 @@ Token Lexer::ScanToken(){
         }
     } while (ch == '/');
 
-    int size = 0;
     std::string val = "";
     switch(chClass){
     case(SPECIAL):{
@@ -300,18 +314,13 @@ Token Lexer::ScanToken(){
                         lineCount++;
                     else if (ch == EOF){
                         tok.tt = T_UNK;
-                        Error::ReportError(ERROR_UNKNOWN, "String missing ending quote");
+                        errTable.ReportError(ERROR_MISSING_STRING_CLOSING, lexFileName, lineCount);
                         break;
                     } 
-                    else if (size >= 255){
-                        tok.tt = T_UNK;
-                        Error::ReportError(ERROR_UNKNOWN, "String is too large");
-                        break;
-                    }
-                    tok.val.stringVal[size++] = ch;
+                    tok.val.stringVal += ch;
                     ch = file.get();
                 }
-                tok.val.stringVal[size] = '0';
+                //tok.val.stringVal += '0';
                 break;
             default:
                 tok.tt = T_UNK;
@@ -325,15 +334,18 @@ Token Lexer::ScanToken(){
                 val += ch;
             }
             ch = file.get();
-        } while(getCharClass(ch) == NUM || ch == '_');
+            chClass = getCharClass(ch);
+        } while(chClass == NUM || ch == '_');
 
-        //check for float value
+        //check for double value
         if (ch == '.'){
             do{
                 if(ch != '_'){
                     val += ch;
                 }
-            } while(getCharClass(ch) == NUM || ch == '_');
+                ch = file.get();
+                chClass = getCharClass(ch);
+            } while(chClass == NUM || ch == '_');
             tok.val.doubleVal += std::stod(val);
             tok.tt = T_DOUBLE_CONST;
             file.unget();
@@ -350,12 +362,11 @@ Token Lexer::ScanToken(){
     case(UPPER_ALPHA):
         do {
             //keywords and identifiers are stored lower
-            size = 0;
             if (chClass == UPPER_ALPHA){
                 ch += ('a' - 'A');
             }
-            tok.val.stringVal[size++] += ch;
-            std::cout << ch << std::endl; 
+            tok.val.stringVal += ch;
+            //std::cout << tok.val.stringVal << std::endl;
             ch = file.get();
             chClass = getCharClass(ch);
         } while (chClass == UPPER_ALPHA || chClass == LOWER_ALPHA ||  
@@ -377,9 +388,5 @@ Token Lexer::ScanToken(){
         break;
     }
     }
-
-    Debug(tok);
-    PopSymbolTable(tok);
-
     return tok;
 }

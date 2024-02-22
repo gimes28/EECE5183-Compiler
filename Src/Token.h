@@ -1,6 +1,8 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
+#include <string>
+
 enum TokenType {
     // Reserved words
     T_PROGRAM = 257,
@@ -65,9 +67,9 @@ enum TokenType {
 
 struct Token{
     TokenType tt;
-    union 
+    struct 
     {
-        char stringVal[256];
+        std::string stringVal;
         int intVal;
         double doubleVal;
     } val;
