@@ -16,7 +16,6 @@ const char* getTokenTypeName(Token tok){
         INSERT_ELEMENT(T_DOUBLE);
         INSERT_ELEMENT(T_STRING);
         INSERT_ELEMENT(T_BOOL);
-        INSERT_ELEMENT(T_ENUM);
         INSERT_ELEMENT(T_IF);
         INSERT_ELEMENT(T_THEN);
         INSERT_ELEMENT(T_ELSE);

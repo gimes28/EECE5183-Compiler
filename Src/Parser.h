@@ -17,12 +17,14 @@ class Parser {
         bool ProgramHeader();
         bool ProgramBody();
         bool Identifier();
-        bool Decleration();
+        bool Declaration();
+        bool DeclarationAssist();
         bool Statement();
+        bool StatementAssist();
         bool ProcedureDeclaration();
         bool VariableDeclaration();
         bool ProcedureHeader();
-        bool ProdecureBody();
+        bool ProcedureBody();
         bool TypeMark();
         bool ParameterList();
         bool Parameter();
@@ -33,6 +35,7 @@ class Parser {
         bool LoopStatement();
         bool ReturnStatement();
         bool ProcedureCall();
+        bool ProcedureCallAssist();
         bool ArgumentList();
         bool Destination();
         bool Expression();

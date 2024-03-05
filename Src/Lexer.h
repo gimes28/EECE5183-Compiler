@@ -29,9 +29,9 @@ class Lexer{
         void SetDebugOption(bool opt);
         bool GetDebugOption();
         void Debug(Token tok);
-        void PopSymbolTable(Token tok);
+        void PushSymbolTable(Token tok);
     private:
-        std::string lexFileName;
+        std::string fileName;
         std::ifstream file;
         std::unordered_map<char, CharClass> charClass;    
         int lineCount = 0;

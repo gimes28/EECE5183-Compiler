@@ -17,16 +17,20 @@ enum ErrorType{
     ERROR_INVALID_DECLARATION = 104,
     ERROR_INVALID_TYPE_MARK = 105,
     ERROR_INVALID_PARAMETER_LIST = 106,
-    ERROR_INVALID_ENUM = 107,
-    ERROR_INVALID_BOUND = 108,
-    ERROR_INVALID_TYPE_DECLARATION = 109,
-    ERROR_INVALID_VARIABLE_DECLARATION = 110,
+    ERROR_INVALID_BOUND = 107,
+    ERROR_INVALID_TYPE_DECLARATION = 108,
+    ERROR_INVALID_VARIABLE_DECLARATION = 109,
+    ERROR_INVALID_IF = 110,
+    ERROR_INVALID_LOOP = 111,
+    ERROR_INVALID_RETURN = 112,
     ERROR_MISSING_STRING_CLOSING = 1000,
     ERROR_MISSING_IDENTIFIER = 1001,
     ERROR_MISSING_SEMICOLON = 1002,
     ERROR_MISSING_COLON = 1002,
     ERROR_MISSING_BRACKET = 1004,
     ERROR_MISSING_PAREN = 1005,
+    ERROR_MISSING_PERIOD = 1006,
+    ERROR_MISSING_ASSIGNMENT = 1007
 
 };
 
@@ -34,12 +38,12 @@ typedef std::unordered_map<ErrorType, std::string> ErrorMap;
 
 class Error{
     public:
-        Error();        
+        Error(); 
         void ReportError(ErrorType err, std::string fileName, int lineNum);
+        void ReportError(ErrorType err);
         void ReportWarning(ErrorType err, std::string fileName, int lineNum);  
     private:
         ErrorMap errorTable;
-        std::string fileName;
 
 };
 
