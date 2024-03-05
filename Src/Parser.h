@@ -8,10 +8,12 @@ class Parser {
     public:
         Parser(Lexer* lexerPtr);
         ~Parser();
+        void SetDebugOption(bool debug);
         bool Parse();
     private:
         Token tok;
         Lexer* lexer;
+        bool debugOption = false;
         bool IsTokenType(TokenType tok);
         bool Program();
         bool ProgramHeader();

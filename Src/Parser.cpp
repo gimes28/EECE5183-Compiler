@@ -20,6 +20,10 @@ bool Parser::IsTokenType(TokenType token){
     return false;
 }
 
+void Parser::SetDebugOption(bool debug){
+    debugOption = debug;
+}
+
 bool Parser::Parse(){
     tok = lexer->InitScan();
     return Program();

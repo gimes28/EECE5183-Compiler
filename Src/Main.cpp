@@ -5,20 +5,37 @@
 #include "SymbolTable.h"
 
 #include <iostream>
+#include <cstring>
 
 int main(int argc, char* args[])
 {
-    if (argc < 2) 
-       std::cout << "Less than 2 argc" << std::endl;
+    bool debugToggle = false;
+
+    if (argc < 2){ 
+        std::cout << "Error: Missing argument" << std::endl;
+        return 1;
+    }
+    else if (argc <= 3){
+        for(int i = 2; i < argc; i++){
+            if(!strcmp(args[i], "-d"))
+                debugToggle = true;
+        }
+    }
+    else{
+        std::cout << "Error: Too many arguments" << std:: endl;
+        return 1;    
+    }
 
     Lexer lexer;
+    lexer.SetDebugOption(debugToggle);
+
     if(!lexer.LoadFile(args[1])) 
         std::cout << "File not opened: " << args[1] << std::endl;
     else
         std::cout << "File Loaded: "<< args[1] << std::endl;
 
-    lexer.SetDebugOption(true);
-    Parser par(&lexer);
+    Parser parser(&lexer);
+    parser.SetDebugOption(debugToggle);
 
     //Token tok = Token();
     /*while(tok.tt != T_EOF){
@@ -27,7 +44,7 @@ int main(int argc, char* args[])
         //lexer.Debug(tok);
     }*/
     
-    bool parsed = par.Parse();
+    bool parsed = parser.Parse();
     std::cout << parsed << std::endl;
     
     std::cout << "Symbol Table: " << std::endl;
