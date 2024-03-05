@@ -211,7 +211,7 @@ bool Parser::VariableDeclaration(){
 
 bool Parser::TypeMark(){
     //std::cout << "TypeMark" << //std::endl;
-    if(IsTokenType(T_INTEGER) || IsTokenType(T_DOUBLE) || 
+    if(IsTokenType(T_INTEGER) || IsTokenType(T_FLOAT) || 
         IsTokenType(T_STRING) || IsTokenType(T_BOOL))
         return true;
     return false;
@@ -535,7 +535,7 @@ bool Parser::ArgumentList(){
 
 bool Parser::Number(){
     //std::cout << "Number" << //std::endl;
-    return (IsTokenType(T_INTEGER_CONST) || IsTokenType(T_DOUBLE_CONST));
+    return (IsTokenType(T_INTEGER_CONST) || IsTokenType(T_FLOAT_CONST));
 }
 
 bool Parser::String(){

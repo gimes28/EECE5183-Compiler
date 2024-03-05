@@ -13,7 +13,7 @@ enum TokenType {
     T_PROCEDURE = 262,
     T_VARIABLE = 263,
     T_INTEGER = 264,
-    T_DOUBLE = 265,
+    T_FLOAT = 265,
     T_STRING = 266,
     T_BOOL = 267,
 
@@ -57,7 +57,7 @@ enum TokenType {
 
     // Constants
     T_INTEGER_CONST = 305,
-    T_DOUBLE_CONST = 306,
+    T_FLOAT_CONST = 306,
     T_STRING_CONST = 307,
 
     T_EOF = 349,
@@ -70,7 +70,7 @@ struct Token{
     {
         std::string stringVal;
         int intVal;
-        double doubleVal;
+        double floatVal;
     } val;
 };
 

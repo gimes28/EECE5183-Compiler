@@ -138,8 +138,8 @@ void Lexer::Debug(Token tok){
         case(T_INTEGER_CONST):
             std::cout << tok.val.intVal << std::endl;
             break;
-        case(T_DOUBLE_CONST):
-            std::cout << tok.val.doubleVal << std::endl;
+        case(T_FLOAT_CONST):
+            std::cout << tok.val.floatVal << std::endl;
             break;
         default:
             std::cout << tok.val.stringVal << std::endl;
@@ -162,8 +162,8 @@ void Lexer::PushSymbolTable(Token tok){
     case(T_INTEGER_CONST):
         val = std::to_string(tok.val.intVal);
         break;
-    case(T_DOUBLE_CONST):
-        val = std::to_string(tok.val.doubleVal);
+    case(T_FLOAT_CONST):
+        val = std::to_string(tok.val.floatVal);
         break;
     default:
         val = tok.val.stringVal;
@@ -349,7 +349,7 @@ Token Lexer::ScanToken(){
             chClass = getCharClass(ch);
         } while(chClass == NUM || ch == '_');
 
-        //Check for double value
+        //Check for float value
         if (ch == '.'){
             do{
                 if(ch != '_'){
@@ -358,8 +358,8 @@ Token Lexer::ScanToken(){
                 ch = file.get();
                 chClass = getCharClass(ch);
             } while(chClass == NUM || ch == '_');
-            tok.val.doubleVal += std::stod(val);
-            tok.tt = T_DOUBLE_CONST;
+            tok.val.floatVal += std::stod(val);
+            tok.tt = T_FLOAT_CONST;
             file.unget();
         }
         //Integer value

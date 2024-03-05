@@ -10,7 +10,7 @@ SymbolTable::SymbolTable(){
     symbolTable["procedure"] = (Token){T_PROCEDURE, "procedure"};
     symbolTable["variable"] = (Token){T_VARIABLE, "variable"};
     symbolTable["integer"] = (Token){T_INTEGER, "integer"};
-    symbolTable["double"] = (Token){T_DOUBLE, "double"};
+    symbolTable["float"] = (Token){T_FLOAT, "float"};
     symbolTable["string"] = (Token){T_STRING, "string"};
     symbolTable["bool"] = (Token){T_BOOL, "bool"};
     symbolTable["if"] = (Token){T_IF, "if"};

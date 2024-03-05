@@ -37,8 +37,8 @@ int main(int argc, char* args[])
         case(T_INTEGER_CONST):
             std::cout << it->second.val.intVal << std::endl;
             break;
-        case(T_DOUBLE_CONST):
-            std::cout << it->second.val.doubleVal << std::endl;
+        case(T_FLOAT_CONST):
+            std::cout << it->second.val.floatVal << std::endl;
             break;
         default:
             std::cout << it->second.val.stringVal << std::endl;
