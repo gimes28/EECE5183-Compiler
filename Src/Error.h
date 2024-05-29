@@ -45,7 +45,9 @@ class Error{
     public:
         Error(); 
         void ReportError(ErrorType err, std::string fileName, int lineNum);
+        void ReportError(ErrorType err, std::string fileName, int lineNum, std::string message);
         void ReportError(ErrorType err);
+        
         void ReportWarning(ErrorType err, std::string fileName, int lineNum);  
     private:
         ErrorMap errorTable;

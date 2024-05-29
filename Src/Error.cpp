@@ -41,6 +41,11 @@ void Error::ReportError(ErrorType err, std::string fileName, int lineNum){
     std::cout << lineNum << "Error: " << errorTable[err] << std::endl;
 }
 
+void Error::ReportError(ErrorType err, std::string fileName, int lineNum, std::string message){
+    std::cout << fileName << ":" << std::left << std::setw(15);
+    std::cout << lineNum << "Error: " << errorTable[err] << " -> " << message << std::endl;
+}
+
 void Error::ReportError(ErrorType err){
     std::cout << std::left << std::setw(15);
     std::cout << "   Error: " << errorTable[err] << std::endl;

@@ -5,7 +5,9 @@
 
 // Symbols stored in the symbol table are identifiers or reserved words
 
-enum Type = {
+// Type of variable or return type of procedure
+
+enum Type {
     TYPE_BOOL,
     TYPE_INT,
     TYPE_FLOAT,
@@ -13,37 +15,25 @@ enum Type = {
     TYPE_UNK
 };
 
-enum SymbolType = {
+// Symbols are either reserved words or identifiers
+
+enum SymbolType {
     ST_KEYWORD,
     ST_VARIABLE,
     ST_PROCEDURE,
     ST_UNK
-}
+};
 
-class Symbol{
-    public:
-        Symbol();
-        Symbol(std::string id, TokenType tt);
-        Symbol(std::string id, TokenType tt, SymbolType st, Type type);
-        void SetId(std::string id);
-        std::string GetId();
-        void SetTokenType(TokenType tt);
-        TokenType GetTokenType();
-        void SetSymbolType(SymbolType st);
-        SymbolType GetSymbolType();
-        void SetType(Type type);
-        Type GetType();
-        bool IsArray();
-        void SetIsArray(bool val);
-        int GetArrayBound();
-        void SetArrayBound(int bound);
-    private:
-        std::string id;
-        TokenType tt;
-        SymbolType st;
-        Type type;
-        bool isArr;
-        int arrBound;
+struct Symbol{
+    Symbol();
+    Symbol(TokenType tt, std::string id);
+    Symbol(TokenType tt, std::string id, SymbolType st, Type type);
+    std::string id;
+    TokenType tt;
+    SymbolType st;
+    Type type;
+    bool isArr;
+    int arrBound;
 };
 
 

@@ -57,7 +57,7 @@ bool Parser::ProgramHeader(){
         return false;
     Symbol id;
     if (!Identifier(id)){
-        errTable.ReportError(ERROR_INVALID_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber());
+        errTable.ReportError(ERROR_INVALID_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\'");
         return false;
     }
 
@@ -127,10 +127,10 @@ bool Parser::ProcedureHeader(bool &isGlobal){
 
     Symbol id;
     if (!Identifier(id)){
-        errTable.ReportError(ERROR_INVALID_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber());
+        errTable.ReportError(ERROR_INVALID_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\'");
         return false;
     }
-    scoper->SetProcSymbol(id.GetId(), id, isGlobal);
+    scoper->SetProcSymbol(id.id, id, isGlobal);
 
     if(!IsTokenType(T_COLON)){
         errTable.ReportError(ERROR_MISSING_COLON, lexer->GetFileName(), lexer->GetLineNumber());
@@ -208,10 +208,10 @@ bool Parser::VariableDeclaration(bool &isGlobal){
 
     Symbol id;
     if (!Identifier(id)){
-        errTable.ReportError(ERROR_INVALID_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber());
+        errTable.ReportError(ERROR_INVALID_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\'");
         return false;
     }
-    scoper->SetSymbol (id.GetId(), id, isGlobal);
+    scoper->SetSymbol (id.id, id, isGlobal);
 
     if(!IsTokenType(T_COLON)){
         errTable.ReportError(ERROR_MISSING_COLON, lexer->GetFileName(), lexer->GetLineNumber());
@@ -410,8 +410,8 @@ bool Parser::ReturnStatement(){
 
 bool Parser::Identifier(Symbol &id){
     //std::cout <<"Identifier" << //std::endl;
-    id.SetId(tok.val.stringVal);
-    id.SetType(tok.tt);
+    id.id = tok.val.stringVal;
+    id.tt = tok.tt;
     return IsTokenType(T_IDENTIFIER);
 }
 

@@ -371,7 +371,7 @@ Token Lexer::ScanToken(){
         file.unget();
         //push to symbolTable if in
         if(scoper->HasSymbol(tok.val.stringVal, true)){
-            tok.tt = scoper->GetSymbol(tok.val.stringVal, true).GetType();
+            tok.tt = scoper->GetSymbol(tok.val.stringVal, true).tt;
         }
         else{
             tok.tt = T_IDENTIFIER;
