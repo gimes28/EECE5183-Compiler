@@ -11,6 +11,12 @@ Error::Error(){
     errorTable[ERROR_INVALID_BODY] = "Invalid body";
     errorTable[ERROR_INVALID_DECLARATION] = "Invalid declaration";
     errorTable[ERROR_INVALID_VARIABLE_DECLARATION] = "Invalid variable declaration";
+    errorTable[ERROR_INVALID_IDENTIFIER] = "Invalid identifier";
+    errorTable[ERROR_INVALID_PARAMETER] = "Invalid parameter";
+    errorTable[ERROR_INVALID_BOUND] = "Invalid bound";
+    errorTable[ERROR_INVALID_CHARACTER] = "Invalid character";
+    errorTable[ERROR_INVALID_FACTOR] = "Invalid factor";
+    errorTable[ERROR_INVALID_ARGUMENT] = "Invalid argument";
     
     
     errorTable[ERROR_INVALID_IF] = "Invalid if statement";
@@ -25,13 +31,14 @@ Error::Error(){
     errorTable[ERROR_MISSING_PERIOD] = "Missing period";
     errorTable[ERROR_MISSING_STRING_CLOSING] = "Missing string closing quote";
     errorTable[ERROR_MISSING_ASSIGNMENT] = "Missing assignment";
+    errorTable[ERROR_MISSING_IDENTIFIER] = "Missing identifier";
 }
 
 // Update Error file to include filename and line number
 
 void Error::ReportError(ErrorType err, std::string fileName, int lineNum){
     std::cout << fileName << ":" << std::left << std::setw(15);
-    std::cout << lineNum << "   Error: " << errorTable[err] << std::endl;
+    std::cout << lineNum << "Error: " << errorTable[err] << std::endl;
 }
 
 void Error::ReportError(ErrorType err){

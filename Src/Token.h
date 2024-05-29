@@ -74,6 +74,6 @@ struct Token{
     } val;
 };
 
-const char* getTokenTypeName(Token tok);
+const char* GetTokenTypeName(TokenType tt);
 
 #endif

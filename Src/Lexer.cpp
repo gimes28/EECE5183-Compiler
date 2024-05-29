@@ -1,16 +1,17 @@
 #include "Lexer.h"
 #include "Token.h"
 #include "Error.h"
-#include "SymbolTable.h"
+#include "ScopeHandler.h"
 
 #include <iostream>
 #include <iomanip>
 #include <string>
 
-SymbolTable symTable;
 Error errTable;
 
-Lexer::Lexer(){
+Lexer::Lexer(ScopeHandler* scoperPtr){
+    scoper = scoperPtr;
+
     charClass['0'] = NUM;
     charClass['1'] = NUM;
     charClass['2'] = NUM;
@@ -114,11 +115,11 @@ bool Lexer::LoadFile(std::string fileName){
     return false;
 }
 
-int Lexer::getLineNumber(){
+int Lexer::GetLineNumber(){
     return lineCount;
 }
 
-std::string Lexer::getFileName(){
+std::string Lexer::GetFileName(){
     return fileName;
 }
 
@@ -133,7 +134,7 @@ bool Lexer::GetDebugOption(){
 void Lexer::Debug(Token tok){
     if(debugOption){
         std::cout << "Token: " << std::left;
-        std::cout << std::setw(20) << getTokenTypeName(tok);
+        std::cout << std::setw(20) << GetTokenTypeName(tok.tt);
         switch(tok.tt) {
         case(T_INTEGER_CONST):
             std::cout << tok.val.intVal << std::endl;
@@ -148,7 +149,7 @@ void Lexer::Debug(Token tok){
     }   
 }
 
-int Lexer::getCharClass(char t){
+int Lexer::GetCharClass(char t){
     if(t == EOF)
         return EOF;
     else if(charClass.find(t) == charClass.end())
@@ -156,26 +157,9 @@ int Lexer::getCharClass(char t){
     return charClass[t];
 }
 
-void Lexer::PushSymbolTable(Token tok){
-    std::string val = "";
-    switch(tok.tt) {
-    case(T_INTEGER_CONST):
-        val = std::to_string(tok.val.intVal);
-        break;
-    case(T_FLOAT_CONST):
-        val = std::to_string(tok.val.floatVal);
-        break;
-    default:
-        val = tok.val.stringVal;
-    }
-    symTable.setSymbol(val, tok);
-}
-
 Token Lexer::InitScan(){
     Token tok = ScanToken();
     Debug(tok);
-
-    PushSymbolTable(tok);
     return tok;
 }
 
@@ -192,7 +176,7 @@ Token Lexer::ScanToken(){
     do {
         do{
             ch = file.get();
-            chClass = getCharClass(ch);
+            chClass = GetCharClass(ch);
             //Check for LR
             if(ch == '\n')
                 lineCount++;
@@ -315,8 +299,10 @@ Token Lexer::ScanToken(){
                 ch = file.get();
                 if(ch == '=')
                     tok.tt = T_ASSIGNMENT;
-                else
-                    tok.tt = T_COLON;                 
+                else{
+                    file.unget();
+                    tok.tt = T_COLON;  
+                }                                   
                 break;
             case '\"': 
                 tok.tt = T_STRING_CONST;
@@ -346,7 +332,7 @@ Token Lexer::ScanToken(){
                 val += ch;
             }
             ch = file.get();
-            chClass = getCharClass(ch);
+            chClass = GetCharClass(ch);
         } while(chClass == NUM || ch == '_');
 
         //Check for float value
@@ -356,7 +342,7 @@ Token Lexer::ScanToken(){
                     val += ch;
                 }
                 ch = file.get();
-                chClass = getCharClass(ch);
+                chClass = GetCharClass(ch);
             } while(chClass == NUM || ch == '_');
             tok.val.floatVal += std::stod(val);
             tok.tt = T_FLOAT_CONST;
@@ -379,13 +365,13 @@ Token Lexer::ScanToken(){
             }
             tok.val.stringVal += ch;
             ch = file.get();
-            chClass = getCharClass(ch);
+            chClass = GetCharClass(ch);
         } while (chClass == UPPER_ALPHA || chClass == LOWER_ALPHA ||  
                 chClass == NUM || ch == '_');
         file.unget();
         //push to symbolTable if in
-        if(symTable.hasSymbol(tok.val.stringVal)){
-            tok.tt = symTable.getSymbol(tok.val.stringVal).tt;
+        if(scoper->HasSymbol(tok.val.stringVal, true)){
+            tok.tt = scoper->GetSymbol(tok.val.stringVal, true).GetType();
         }
         else{
             tok.tt = T_IDENTIFIER;

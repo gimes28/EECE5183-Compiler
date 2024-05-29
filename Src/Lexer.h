@@ -5,6 +5,7 @@
 #include <fstream>
 #include <unordered_map>
 
+#include "ScopeHandler.h"
 #include "Token.h"
 
 enum CharClass {
@@ -18,19 +19,19 @@ enum CharClass {
 
 class Lexer{
     public:
-        Lexer();
+        Lexer(ScopeHandler* scoperPtr);
         ~Lexer();
         bool LoadFile(std::string fileName);
         Token InitScan();
         Token ScanToken();
-        int getCharClass(char t);
-        int getLineNumber();
-        std::string getFileName(); 
+        int GetCharClass(char t);
+        int GetLineNumber();
+        std::string GetFileName(); 
         void SetDebugOption(bool opt);
         bool GetDebugOption();
         void Debug(Token tok);
-        void PushSymbolTable(Token tok);
     private:
+        ScopeHandler* scoper;
         std::string fileName;
         std::ifstream file;
         std::unordered_map<char, CharClass> charClass;    

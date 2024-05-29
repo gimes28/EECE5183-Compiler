@@ -1,6 +1,6 @@
 #include "Token.h"
 
-const char* getTokenTypeName(Token tok){
+const char* GetTokenTypeName(TokenType tt){
     static bool init;
     static const char* names[100];
     if(!init){
@@ -56,5 +56,5 @@ const char* getTokenTypeName(Token tok){
 #undef INSERT_ELEMENT
         init = true;
     }
-    return names[tok.tt];
+    return names[tt];
 }

@@ -3,29 +3,32 @@
 
 #include "Lexer.h"
 #include "Token.h"
+#include "ScopeHandler.h"
+#include "Symbol.h"
 
 class Parser {
     public:
-        Parser(Lexer* lexerPtr);
+        Parser(Lexer* lexerPtr, ScopeHandler* scoperPtr);
         ~Parser();
         void SetDebugOption(bool debug);
         bool Parse();
     private:
         Token tok;
         Lexer* lexer;
+        ScopeHandler* scoper;
         bool debugOption = false;
         bool IsTokenType(TokenType tok);
         bool Program();
         bool ProgramHeader();
         bool ProgramBody();
-        bool Identifier();
+        bool Identifier(Symbol &id);
         bool Declaration();
         bool DeclarationAssist();
         bool Statement();
         bool StatementAssist();
-        bool ProcedureDeclaration();
-        bool VariableDeclaration();
-        bool ProcedureHeader();
+        bool ProcedureDeclaration(bool &isGlobal);
+        bool VariableDeclaration(bool &isGlobal);
+        bool ProcedureHeader(bool &isGlobal);
         bool ProcedureBody();
         bool TypeMark();
         bool ParameterList();
@@ -36,10 +39,10 @@ class Parser {
         bool IfStatement();
         bool LoopStatement();
         bool ReturnStatement();
-        bool ProcedureCall();
-        bool ProcedureCallAssist();
+        bool ProcedureCall(Symbol &id);
+        bool ProcedureCallAssist(Symbol &id);
         bool ArgumentList();
-        bool Destination();
+        bool Destination(Symbol &id);
         bool Expression();
         bool ExpressionPrime();
         bool ArithOp();
@@ -49,7 +52,7 @@ class Parser {
         bool Term();
         bool TermPrime();
         bool Factor();
-        bool Name();
+        bool Name(Symbol &id);
         bool String();
 };
 

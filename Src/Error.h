@@ -23,6 +23,11 @@ enum ErrorType{
     ERROR_INVALID_IF = 110,
     ERROR_INVALID_LOOP = 111,
     ERROR_INVALID_RETURN = 112,
+    ERROR_INVALID_IDENTIFIER = 113,
+    ERROR_INVALID_PARAMETER = 114,
+    ERROR_INVALID_CHARACTER = 115,
+    ERROR_INVALID_FACTOR = 116,
+    ERROR_INVALID_ARGUMENT = 117,
     ERROR_MISSING_STRING_CLOSING = 1000,
     ERROR_MISSING_IDENTIFIER = 1001,
     ERROR_MISSING_SEMICOLON = 1002,
@@ -44,7 +49,6 @@ class Error{
         void ReportWarning(ErrorType err, std::string fileName, int lineNum);  
     private:
         ErrorMap errorTable;
-
 };
 
 extern Error errTable;

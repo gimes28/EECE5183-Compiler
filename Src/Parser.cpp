@@ -1,11 +1,14 @@
 #include "Parser.h"
 #include "Lexer.h"
 #include "Error.h"
+#include "ScopeHandler.h"
+#include "Symbol.h"
 
 #include <iostream>
 
-Parser::Parser(Lexer* lexerptr){
+Parser::Parser(Lexer* lexerptr, ScopeHandler* scoperPtr){
     lexer = lexerptr;
+    scoper = scoperPtr;
 }
 
 Parser::~Parser(){
@@ -31,6 +34,7 @@ bool Parser::Parse(){
 
 bool Parser::Program(){
     //std::cout <<"Program" << //std::endl;
+    //Global scope is defined in scopeHandler
     if (!ProgramHeader())
         return false;
 
@@ -38,11 +42,12 @@ bool Parser::Program(){
         return false;
 
     if (!IsTokenType(T_PERIOD)){
-        errTable.ReportError(ERROR_MISSING_PERIOD);
+        errTable.ReportError(ERROR_MISSING_PERIOD, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
-    if(!IsTokenType(T_EOF))
+    if(tok.tt != T_EOF)
         return false;
+    scoper->ExitScope();
     return true;
 }
 
@@ -50,12 +55,14 @@ bool Parser::ProgramHeader(){
     //std::cout <<"ProgramHeader" << //std::endl;
     if (!IsTokenType(T_PROGRAM))
         return false;
-
-    if (!Identifier())
+    Symbol id;
+    if (!Identifier(id)){
+        errTable.ReportError(ERROR_INVALID_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
+    }
 
     if(!IsTokenType(T_IS)){
-        errTable.ReportError(ERROR_INVALID_HEADER);
+        errTable.ReportError(ERROR_INVALID_HEADER, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
     return true;    
@@ -69,7 +76,7 @@ bool Parser::ProgramBody(){
     if (!IsTokenType(T_BEGIN)){
         // ERROR
         //std::cout <<"ProgramBody1" << //std::endl;
-        errTable.ReportError(ERROR_INVALID_BODY);
+        errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
 
@@ -77,12 +84,12 @@ bool Parser::ProgramBody(){
         return false;
     
     if (!IsTokenType(T_END)){
-        errTable.ReportError(ERROR_INVALID_BODY);
+        errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
 
     if (!IsTokenType(T_PROGRAM)){
-        errTable.ReportError(ERROR_INVALID_BODY);
+        errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
     return true;
@@ -90,14 +97,11 @@ bool Parser::ProgramBody(){
 
 bool Parser::Declaration(){
     //std::cout <<"Declaration" << //std::endl;
-    if (IsTokenType(T_GLOBAL)){
-        //errTable.ReportError(ERROR_INVALID_DECLARATION);
-        //return false;
-    }
+    bool isGlobal = IsTokenType(T_GLOBAL);
     //std::cout <<"Decleration Started" << //std::endl;
-    if (ProcedureDeclaration()) {
+    if (ProcedureDeclaration(isGlobal)) {
         //std::cout <<"Proc Decleration Finished" << //std::endl;
-    } else if (VariableDeclaration()) {
+    } else if (VariableDeclaration(isGlobal)) {
         //std::cout <<"Var Decleration Finished" << //std::endl;
     }
     else
@@ -105,40 +109,48 @@ bool Parser::Declaration(){
     return true;
 }
 
-bool Parser::ProcedureDeclaration(){
+bool Parser::ProcedureDeclaration(bool &isGlobal){
     //std::cout <<"ProcedureDeclaration" << //std::endl;
-    if(!ProcedureHeader())
+    if(!ProcedureHeader(isGlobal))
         return false;
     if(!ProcedureBody())
         return false;
+    scoper->ExitScope();
     return true;
 }
 
-bool Parser::ProcedureHeader(){
+bool Parser::ProcedureHeader(bool &isGlobal){
     //std::cout <<"ProcedureHeader" << //std::endl;
     if(!IsTokenType(T_PROCEDURE))
         return false;
+    scoper->NewScope();
 
-    if (!Identifier())
+    Symbol id;
+    if (!Identifier(id)){
+        errTable.ReportError(ERROR_INVALID_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
+    }
+    scoper->SetProcSymbol(id.GetId(), id, isGlobal);
 
     if(!IsTokenType(T_COLON)){
-        errTable.ReportError(ERROR_MISSING_COLON);
+        errTable.ReportError(ERROR_MISSING_COLON, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
 
-    if(!TypeMark())
+    if(!TypeMark()){
+        errTable.ReportError(ERROR_INVALID_TYPE_MARK, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
+    }
     
     if(!IsTokenType(T_LPAREN)){
-        errTable.ReportError(ERROR_MISSING_PAREN);
+        errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
 
     ParameterList();
 
     if(!IsTokenType(T_RPAREN)){
-        errTable.ReportError(ERROR_MISSING_PAREN);
+        errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
     return true;
@@ -149,15 +161,19 @@ bool Parser::ParameterList(){
     if(!Parameter())
         return false;
 
-    if(IsTokenType(T_COMMA)){
-        ParameterList();
+    while(IsTokenType(T_COMMA)){
+        if (!Parameter()) {
+            errTable.ReportError(ERROR_INVALID_PARAMETER, lexer->GetFileName(), lexer->GetLineNumber());
+            return false;
+        }
     }
     return true;
 }
 
 bool Parser::Parameter(){
     //std::cout <<"Parameter" << //std::endl;
-    return VariableDeclaration();
+    bool isGlobal = false;
+    return VariableDeclaration(isGlobal);
 }
 
 bool Parser::ProcedureBody(){
@@ -166,7 +182,7 @@ bool Parser::ProcedureBody(){
         return false;
 
     if (!IsTokenType(T_BEGIN)){
-        errTable.ReportError(ERROR_INVALID_BODY);
+        errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
 
@@ -174,39 +190,46 @@ bool Parser::ProcedureBody(){
         return false;
     
     if (!IsTokenType(T_END)){
-        errTable.ReportError(ERROR_INVALID_BODY);
+        errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
 
     if (!IsTokenType(T_PROCEDURE)){
-        errTable.ReportError(ERROR_INVALID_BODY);
+        errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
     return true;
 }
 
-bool Parser::VariableDeclaration(){
+bool Parser::VariableDeclaration(bool &isGlobal){
     //std::cout << "VariableDeclaration" << //std::endl;
     if (!IsTokenType(T_VARIABLE))
         return false;
 
-    if (!Identifier())
+    Symbol id;
+    if (!Identifier(id)){
+        errTable.ReportError(ERROR_INVALID_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
-    
+    }
+    scoper->SetSymbol (id.GetId(), id, isGlobal);
+
     if(!IsTokenType(T_COLON)){
-        errTable.ReportError(ERROR_MISSING_COLON);
+        errTable.ReportError(ERROR_MISSING_COLON, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
 
-    if(!TypeMark())
+    if(!TypeMark()){
+        errTable.ReportError(ERROR_INVALID_TYPE_MARK, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
+    }
     
     if(IsTokenType(T_LBRACKET)){
-        if(!Bound())
+        if(!Bound()){
+            errTable.ReportError(ERROR_INVALID_BOUND, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
-
+        }
         if(!IsTokenType(T_RBRACKET)){
-            errTable.ReportError(ERROR_MISSING_BRACKET);
+            errTable.ReportError(ERROR_MISSING_BRACKET, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
         }
     }
@@ -237,9 +260,9 @@ bool Parser::Statement(){
     return true;
 }
 
-bool Parser::ProcedureCall(){
+bool Parser::ProcedureCall(Symbol &id){
     //std::cout << "ProcedureCall" << //std::endl;
-    if(!Identifier())
+    if(!Identifier(id))
         return false;
 
     if(!IsTokenType(T_LPAREN))
@@ -248,7 +271,7 @@ bool Parser::ProcedureCall(){
     ArgumentList();
 
     if (!IsTokenType(T_RPAREN)){
-        errTable.ReportError(ERROR_MISSING_PAREN);
+        errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
     return true;    
@@ -256,7 +279,8 @@ bool Parser::ProcedureCall(){
 
 bool Parser::AssignmentStatement(){
     //std::cout << "AssignmentStatement" << //std::endl;
-    if(!Destination())
+    Symbol id;
+    if(!Destination(id))
         return false;
 
     if (!IsTokenType(T_ASSIGNMENT)){
@@ -269,17 +293,17 @@ bool Parser::AssignmentStatement(){
     return true;    
 }
 
-bool Parser::Destination(){
+bool Parser::Destination(Symbol &id){
     //std::cout << "Destination" << //std::endl;
-    if(!Identifier())
+    if(!Identifier(id))
         return false;
     
     if(IsTokenType(T_LBRACKET)){         
         if (!Expression())
             return false;
         
-        if (!IsTokenType(T_RPAREN)){
-            errTable.ReportError(ERROR_MISSING_PAREN);
+        if (!IsTokenType(T_RBRACKET)){
+            errTable.ReportError(ERROR_MISSING_BRACKET, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
         }   
     }
@@ -293,7 +317,7 @@ bool Parser::IfStatement(){
     }
 
     if(!IsTokenType(T_LPAREN)){
-        errTable.ReportError(ERROR_MISSING_PAREN);
+        errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
 
@@ -301,12 +325,12 @@ bool Parser::IfStatement(){
         return false;
 
     if(!IsTokenType(T_RPAREN)){
-        errTable.ReportError(ERROR_MISSING_PAREN);
+        errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
 
     if(!IsTokenType(T_THEN)){
-        errTable.ReportError(ERROR_INVALID_IF);
+        errTable.ReportError(ERROR_INVALID_IF, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
 
@@ -319,12 +343,12 @@ bool Parser::IfStatement(){
     }
 
     if(!IsTokenType(T_END)){
-        errTable.ReportError(ERROR_INVALID_IF);
+        errTable.ReportError(ERROR_INVALID_IF, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
 
     if(!IsTokenType(T_IF)){
-        errTable.ReportError(ERROR_INVALID_IF);
+        errTable.ReportError(ERROR_INVALID_IF, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
 
@@ -338,7 +362,7 @@ bool Parser::LoopStatement(){
     }
      
     if (!IsTokenType(T_LPAREN)){
-        errTable.ReportError(ERROR_MISSING_PAREN);
+        errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber());
         return false;   
     }
 
@@ -346,7 +370,7 @@ bool Parser::LoopStatement(){
         return false;
 
     if(!IsTokenType(T_SEMICOLON)){
-        errTable.ReportError(ERROR_MISSING_SEMICOLON);
+        errTable.ReportError(ERROR_MISSING_SEMICOLON, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
 
@@ -354,7 +378,7 @@ bool Parser::LoopStatement(){
         return false;
 
     if(!IsTokenType(T_RPAREN)){
-        errTable.ReportError(ERROR_MISSING_PAREN);
+        errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
 
@@ -362,12 +386,12 @@ bool Parser::LoopStatement(){
         return false;
     
     if(!IsTokenType(T_END)){
-        errTable.ReportError(ERROR_INVALID_LOOP);
+        errTable.ReportError(ERROR_INVALID_LOOP, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
 
     if(!IsTokenType(T_FOR)){
-        errTable.ReportError(ERROR_INVALID_LOOP);
+        errTable.ReportError(ERROR_INVALID_LOOP, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
     return true;
@@ -384,9 +408,11 @@ bool Parser::ReturnStatement(){
     return true;
 }
 
-bool Parser::Identifier(){
+bool Parser::Identifier(Symbol &id){
     //std::cout <<"Identifier" << //std::endl;
-    return (IsTokenType(T_IDENTIFIER));
+    id.SetId(tok.val.stringVal);
+    id.SetType(tok.tt);
+    return IsTokenType(T_IDENTIFIER);
 }
 
 bool Parser::Expression(){
@@ -487,33 +513,38 @@ bool Parser::TermPrime(){
 
 bool Parser::Factor(){
     //std::cout << "Factor" << //std::endl;
+    Symbol id;
     if(IsTokenType(T_LPAREN)){
         if(!Expression())
             return false;
         
         if(!IsTokenType(T_RPAREN)){
-            errTable.ReportError(ERROR_MISSING_PAREN);
+            errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
         }
     }
-    else if(ProcedureCallAssist()){}
+    else if(ProcedureCallAssist(id)){}
     else if(IsTokenType(T_MINUS)){
-        if (Name()){}
+        if (Name(id)){}
         else if(Number()){}
-        else
+        else{
+            errTable.ReportError(ERROR_INVALID_CHARACTER, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
+        }
     }
     else if (Number()){}
     else if(IsTokenType(T_STRING_CONST)){}
     else if(IsTokenType(T_TRUE) || IsTokenType(T_FALSE)){}
-    else
+    else{
+        errTable.ReportError(ERROR_INVALID_FACTOR, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
+    }
     return true;
 }
 
-bool Parser::Name(){
+bool Parser::Name(Symbol &id){
     //std::cout << "Name" << //std::endl;
-    if(!Identifier())
+    if(!Identifier(id))
         return false;
     
     if (IsTokenType(T_LBRACKET)){
@@ -521,7 +552,7 @@ bool Parser::Name(){
             return false;
         
         if(!IsTokenType(T_RBRACKET)){
-            errTable.ReportError(ERROR_MISSING_BRACKET);
+            errTable.ReportError(ERROR_MISSING_BRACKET, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
         }
     }
@@ -532,8 +563,12 @@ bool Parser::ArgumentList(){
     //std::cout << "ArgumentList" << //std::endl;
     if(!Expression())
         return false;
-    if(IsTokenType(T_COMMA))
-        return ArgumentList();
+    while(IsTokenType(T_COMMA)){
+        if(!Expression()){
+            errTable.ReportError(ERROR_INVALID_ARGUMENT, lexer->GetFileName(), lexer->GetLineNumber());
+            return false;
+        }
+    }
     return true;
 }
 
@@ -550,7 +585,7 @@ bool Parser::String(){
 bool Parser::DeclarationAssist(){
     while(Declaration()){
         if(!IsTokenType(T_SEMICOLON)){
-            errTable.ReportError(ERROR_MISSING_SEMICOLON);
+            errTable.ReportError(ERROR_MISSING_SEMICOLON, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
         }
     }
@@ -560,7 +595,7 @@ bool Parser::DeclarationAssist(){
 bool Parser::StatementAssist(){
     while(Statement()){
         if(!IsTokenType(T_SEMICOLON)){
-            errTable.ReportError(ERROR_MISSING_SEMICOLON);
+            errTable.ReportError(ERROR_MISSING_SEMICOLON, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
         }
     }
@@ -568,16 +603,16 @@ bool Parser::StatementAssist(){
 }
 
 
-bool Parser::ProcedureCallAssist(){
+bool Parser::ProcedureCallAssist(Symbol &id){
     //std::cout << "ProcedureCallAssist" << //std::endl;
-    if (!IsTokenType(T_IDENTIFIER))
+    if (!Identifier(id))
         return false;
     
     if(IsTokenType(T_LPAREN)){
         ArgumentList();
 
         if (!IsTokenType(T_RPAREN)){
-            errTable.ReportError(ERROR_MISSING_PAREN);
+            errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
         }
         return true;  
@@ -588,7 +623,7 @@ bool Parser::ProcedureCallAssist(){
                 return false;
             
             if(!IsTokenType(T_RBRACKET)){
-                errTable.ReportError(ERROR_MISSING_BRACKET);
+                errTable.ReportError(ERROR_MISSING_BRACKET, lexer->GetFileName(), lexer->GetLineNumber());
                 return false;
             }
         }
