@@ -42,17 +42,18 @@ class Parser {
         bool ProcedureCallAssist(Symbol &id);
         bool ArgumentList();
         bool Destination(Symbol &id);
-        bool Expression();
-        bool ExpressionPrime();
-        bool ArithOp();
-        bool ArithOpPrime();
-        bool Relation();
-        bool RelationPrime();
-        bool Term();
-        bool TermPrime();
-        bool Factor();
+        bool Expression(Symbol &exp);
+        bool ExpressionPrime(Symbol &exp);
+        bool ArithOp(Symbol &aro);
+        bool ArithOpPrime(Symbol &aro);
+        bool Relation(Symbol &rel);
+        bool RelationPrime(Symbol &rel);
+        bool Term(Symbol &trm);
+        bool TermPrime(Symbol &trm);
+        bool Factor(Symbol &fac);
         bool Name(Symbol &id);
         bool String(Symbol &str);
+        bool NameAssist(Symbol &id);
 };
 
 #endif

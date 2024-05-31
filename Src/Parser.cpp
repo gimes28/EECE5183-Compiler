@@ -305,7 +305,7 @@ bool Parser::Statement(){
 
 bool Parser::AssignmentStatement(){
     //std::cout << "AssignmentStatement" << //std::endl;
-    Symbol decl;
+    Symbol decl, exp;
     if(!Destination(decl))
         return false;
 
@@ -313,9 +313,12 @@ bool Parser::AssignmentStatement(){
         return false;
     }
 
-    if (!Expression())
+    if (!Expression(exp))
         return false;
     
+
+    // Perform type check
+
     return true;    
 }
 
@@ -331,10 +334,13 @@ bool Parser::Destination(Symbol &id){
 
     id = scoper->GetSymbol(id.id);
 
-    if(IsTokenType(T_LBRACKET)){         
-        if (!Expression())
+    if(IsTokenType(T_LBRACKET)){      
+        Symbol exp;   
+        if (!Expression(exp))
             return false;
         
+        // Check access
+
         if (!IsTokenType(T_RBRACKET)){
             errTable.ReportError(ERROR_MISSING_BRACKET, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
@@ -354,8 +360,11 @@ bool Parser::IfStatement(){
         return false;
     }
 
-    if(!Expression())
+    Symbol exp;   
+    if(!Expression(exp))
         return false;
+
+    // Check and convert to bool
 
     if(!IsTokenType(T_RPAREN)){
         errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber());
@@ -407,8 +416,11 @@ bool Parser::LoopStatement(){
         return false;
     }
 
-    if(!Expression())
+    Symbol exp;
+    if(!Expression(exp))
         return false;
+
+    // Check and convert to bool
 
     if(!IsTokenType(T_RPAREN)){
         errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber());
@@ -435,7 +447,8 @@ bool Parser::ReturnStatement(){
     if (!IsTokenType(T_RETURN))
         return false;
 
-    if(!Expression())
+    Symbol exp;
+    if(!Expression(exp))
         return false;
 
     return true;
@@ -450,106 +463,119 @@ bool Parser::Identifier(Symbol &id){
     return IsTokenType(T_IDENTIFIER);
 }
 
-bool Parser::Expression(){
+bool Parser::Expression(Symbol &exp){
     //std::cout << "Expression" << //std::endl;
     bool notToken = IsTokenType(T_NOT);
 
-    if(!ArithOp())
+    if(!ArithOp(exp))
         return false;
 
-    if(!ExpressionPrime())
+    if(!ExpressionPrime(exp))
         return false;
 
     return true;
 }
 
-bool Parser::ExpressionPrime(){
+bool Parser::ExpressionPrime(Symbol &exp){
     //std::cout << "ExpressionPrime" << //std::endl;
     if (IsTokenType(T_AND) || IsTokenType(T_OR)){
-        if(!ArithOp())
+        Symbol rhs;
+        if(!ArithOp(rhs))
             return false;
         
-        if(!ExpressionPrime())
+        // Check and convert type for & and |
+
+        if(!ExpressionPrime(exp))
             return false;
     }
     return true;
 }
 
-bool Parser::ArithOp(){
+bool Parser::ArithOp(Symbol &aro){
     //std::cout << "ArithOp" << //std::endl;
-    if(!Relation())
+    if(!Relation(aro))
         return false;
     
-    if(!ArithOpPrime())
+    // Check and convert type for + and -
+
+    if(!ArithOpPrime(aro))
         return false;
     
     return true;
 }
 
-bool Parser::ArithOpPrime(){
+bool Parser::ArithOpPrime(Symbol &aro){
     //std::cout << "ArithOpPrime" << //std::endl;
     if (IsTokenType(T_PLUS) || IsTokenType(T_MINUS)){
-        if(!Relation())
+        Symbol rhs;
+        if(!Relation(rhs))
             return false;
         
-        if(!ArithOpPrime())
+        if(!ArithOpPrime(aro))
             return false;
     }
     return true;
 }
 
-bool Parser::Relation(){
+bool Parser::Relation(Symbol &rel){
     //std::cout << "Relation" << //std::endl;
-    if(!Term())
+    if(!Term(rel))
         return false;
     
-    if(!RelationPrime())
+    // Check and convert type for relation ops
+
+    if(!RelationPrime(rel))
         return false;
 
     return true;
 }
 
-bool Parser::RelationPrime(){
+bool Parser::RelationPrime(Symbol &rel){
     //std::cout << "RelationPrime" << //std::endl;
     if(IsTokenType(T_LESS) || IsTokenType(T_LESS_EQ) || 
         IsTokenType(T_GREATER) || IsTokenType(T_GREATER_EQ) || 
         IsTokenType(T_EQUAL) || IsTokenType(T_NOT_EQUAL)){
-        if(!Term())
+
+        Symbol rhs;    
+        if(!Term(rhs))
             return false;
-        if(!RelationPrime())
+
+        if(!RelationPrime(rel))
             return false;
     }
     return true;
 }
 
-bool Parser::Term(){
+bool Parser::Term(Symbol &trm){
     //std::cout << "Term" << //std::endl;
-    if(!Factor())
+    if(!Factor(trm))
         return false;
     
-    if(!TermPrime())
+    if(!TermPrime(trm))
         return false;
 
     return true;
 }
 
-bool Parser::TermPrime(){
+bool Parser::TermPrime(Symbol &trm){
     //std::cout << "TermPrime" << //std::endl;
     if(IsTokenType(T_MULTIPLY) || IsTokenType(T_DIVIDE)){
-        if(!Factor())
+        Symbol rhs;
+        if(!Factor(rhs))
             return false;
 
-        if(!TermPrime())
+        // Check and convert type for * and /
+
+        if(!TermPrime(trm))
             return false;
     }
     return true;
 }
 
-bool Parser::Factor(){
+bool Parser::Factor(Symbol &fac){
     //std::cout << "Factor" << //std::endl;
-    Symbol id;
     if(IsTokenType(T_LPAREN)){
-        if(!Expression())
+        if(!Expression(fac))
             return false;
         
         if(!IsTokenType(T_RPAREN)){
@@ -557,18 +583,25 @@ bool Parser::Factor(){
             return false;
         }
     }
-    else if(ProcedureCallAssist(id)){}
+    else if(ProcedureCallAssist(fac)){}
     else if(IsTokenType(T_MINUS)){
-        if (Name(id)){}
-        else if(Number(id)){}
+        if (Name(fac)){}
+        else if(Number(fac)){}
         else{
-            errTable.ReportError(ERROR_INVALID_CHARACTER, lexer->GetFileName(), lexer->GetLineNumber());
+            errTable.ReportError(ERROR_INVALID_CHARACTER, lexer->GetFileName(), lexer->GetLineNumber(), "Invalid use of \'-\'");
             return false;
         }
     }
-    else if(Number(id)){}
-    else if(String(id)){}
-    else if(IsTokenType(T_TRUE) || IsTokenType(T_FALSE)){}
+    else if(Number(fac)){}
+    else if(String(fac)){}
+    else if(IsTokenType(T_TRUE)){
+        fac.tt = T_TRUE;
+        fac.type = TYPE_BOOL;
+    }
+    else if(IsTokenType(T_FALSE)){
+        fac.tt = T_FALSE;
+        fac.type = TYPE_BOOL;
+    }
     else
         return false;
     return true;
@@ -586,27 +619,27 @@ bool Parser::Name(Symbol &id){
 
     id = scoper->GetSymbol(id.id);
 
-    if (IsTokenType(T_LBRACKET)){
-        if(!Expression())
-            return false;
-        
-        if(!IsTokenType(T_RBRACKET)){
-            errTable.ReportError(ERROR_MISSING_BRACKET, lexer->GetFileName(), lexer->GetLineNumber());
-            return false;
-        }
+    if (!NameAssist(id)){
+        return false;
     }
     return true;
 }
 
 bool Parser::ArgumentList(){
     //std::cout << "ArgumentList" << //std::endl;
-    if(!Expression())
+    Symbol exp;
+    if(!Expression(exp))
         return false;
+
+    // Check type match to param
+    
     while(IsTokenType(T_COMMA)){
-        if(!Expression()){
+        exp = Symbol();
+        if(!Expression(exp)){
             errTable.ReportError(ERROR_INVALID_ARGUMENT, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
         }
+        // Check type match to param
     }
     return true;
 }
@@ -687,15 +720,24 @@ bool Parser::ProcedureCallAssist(Symbol &id){
         return true;  
     }
     else{
-        if (IsTokenType(T_LBRACKET)){
-            if(!Expression())
-                return false;
-            
-            if(!IsTokenType(T_RBRACKET)){
-                errTable.ReportError(ERROR_MISSING_BRACKET, lexer->GetFileName(), lexer->GetLineNumber());
-                return false;
-            }
-        }
-        return true;
+        if(!NameAssist(id))
+            return false;
     }
+    return true;
+}
+
+bool Parser::NameAssist(Symbol &id){
+    if (IsTokenType(T_LBRACKET)){
+        Symbol exp;
+        if(!Expression(exp))
+            return false;
+        
+        // Check valid access
+
+        if(!IsTokenType(T_RBRACKET)){
+            errTable.ReportError(ERROR_MISSING_BRACKET, lexer->GetFileName(), lexer->GetLineNumber());
+            return false;
+        }
+    }
+    return true;
 }
