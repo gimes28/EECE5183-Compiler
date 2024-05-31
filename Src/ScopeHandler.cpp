@@ -6,25 +6,25 @@ ScopeHandler::ScopeHandler() {
     global = new Scope();
     local = global;
 
-    global->SetSymbol("program", Symbol(T_PROGRAM, "program"));
-    global->SetSymbol("is", Symbol(T_IS, "is"));
-    global->SetSymbol("begin", Symbol(T_BEGIN, "begin"));
-    global->SetSymbol("end", Symbol(T_END, "end"));
-    global->SetSymbol("global", Symbol(T_GLOBAL, "global"));
-    global->SetSymbol("procedure", Symbol(T_PROCEDURE, "procedure"));
-    global->SetSymbol("variable", Symbol(T_VARIABLE, "variable"));
-    global->SetSymbol("integer", Symbol(T_INTEGER, "integer"));
-    global->SetSymbol("float", Symbol(T_FLOAT, "float"));
-    global->SetSymbol("string", Symbol(T_STRING, "string"));
-    global->SetSymbol("bool", Symbol(T_BOOL, "bool"));
-    global->SetSymbol("if", Symbol(T_IF, "if"));
-    global->SetSymbol("then", Symbol(T_THEN, "then"));
-    global->SetSymbol("else", Symbol(T_ELSE, "else"));
-    global->SetSymbol("for", Symbol(T_FOR, "for"));
-    global->SetSymbol("return", Symbol(T_RETURN, "return"));
-    global->SetSymbol("not", Symbol(T_NOT, "not"));
-    global->SetSymbol("true", Symbol(T_TRUE, "true"));
-    global->SetSymbol("false", Symbol(T_FALSE, "false"));
+    global->SetSymbol("program", Symbol(T_PROGRAM, "program", ST_KEYWORD, TYPE_UNK));
+    global->SetSymbol("is", Symbol(T_IS, "is", ST_KEYWORD, TYPE_UNK));
+    global->SetSymbol("begin", Symbol(T_BEGIN, "begin", ST_KEYWORD, TYPE_UNK));
+    global->SetSymbol("end", Symbol(T_END, "end", ST_KEYWORD, TYPE_UNK));
+    global->SetSymbol("global", Symbol(T_GLOBAL, "global", ST_KEYWORD, TYPE_UNK));
+    global->SetSymbol("procedure", Symbol(T_PROCEDURE, "procedure", ST_KEYWORD, TYPE_UNK));
+    global->SetSymbol("variable", Symbol(T_VARIABLE, "variable", ST_KEYWORD, TYPE_UNK));
+    global->SetSymbol("integer", Symbol(T_INTEGER, "integer", ST_KEYWORD, TYPE_INT));
+    global->SetSymbol("float", Symbol(T_FLOAT, "float", ST_KEYWORD, TYPE_FLOAT));
+    global->SetSymbol("string", Symbol(T_STRING, "string", ST_KEYWORD, TYPE_STRING));
+    global->SetSymbol("bool", Symbol(T_BOOL, "bool", ST_KEYWORD, TYPE_UNK));
+    global->SetSymbol("if", Symbol(T_IF, "if", ST_KEYWORD, TYPE_UNK));
+    global->SetSymbol("then", Symbol(T_THEN, "then", ST_KEYWORD, TYPE_UNK));
+    global->SetSymbol("else", Symbol(T_ELSE, "else", ST_KEYWORD, TYPE_UNK));
+    global->SetSymbol("for", Symbol(T_FOR, "for", ST_KEYWORD, TYPE_UNK));
+    global->SetSymbol("return", Symbol(T_RETURN, "return", ST_KEYWORD, TYPE_UNK));
+    global->SetSymbol("not", Symbol(T_NOT, "not", ST_KEYWORD, TYPE_UNK));
+    global->SetSymbol("true", Symbol(T_TRUE, "true", ST_KEYWORD, TYPE_BOOL));
+    global->SetSymbol("false", Symbol(T_FALSE, "false", ST_KEYWORD, TYPE_BOOL));
 }
 
 ScopeHandler::~ScopeHandler() {
@@ -69,10 +69,20 @@ Symbol ScopeHandler::GetSymbol(std::string str, bool glob) {
     return local->GetSymbol(str);
 }
 
+Symbol ScopeHandler::GetSymbol(std::string str) {
+    if(local->HasSymbol(str))
+        return local->GetSymbol(str);
+    return global->GetSymbol(str);
+}
+
 bool ScopeHandler::HasSymbol(std::string str, bool glob) {
     if (glob)
         return global->HasSymbol(str);
     return local->HasSymbol(str);
+}
+
+bool ScopeHandler::HasSymbol(std::string str) {
+    return local->HasSymbol(str) || global->HasSymbol(str);
 }
 
 void ScopeHandler::PrintScope(bool glob) {

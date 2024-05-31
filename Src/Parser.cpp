@@ -115,6 +115,8 @@ bool Parser::ProcedureDeclaration(Symbol &decl){
     if(!ProcedureHeader(decl))
         return false;
 
+    decl.st = ST_PROCEDURE;
+
     if (scoper->HasSymbol(decl.id, decl.isGlobal)){
         errTable.ReportError(ERROR_DUPLICATE_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + decl.id + "\'");
         return false;
@@ -152,7 +154,7 @@ bool Parser::ProcedureHeader(Symbol &decl){
         return false;
     }
 
-    if(!TypeMark()){
+    if(!TypeMark(decl)){
         errTable.ReportError(ERROR_INVALID_TYPE_MARK, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
@@ -223,25 +225,28 @@ bool Parser::VariableDeclaration(Symbol &decl){
     if (!IsTokenType(T_VARIABLE))
         return false;
 
+    decl.st = ST_VARIABLE;
+
     if (!Identifier(decl)){
         errTable.ReportError(ERROR_DUPLICATE_VARIABLE, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + decl.id + "\'");
         return false;
     }
-
-    scoper->SetSymbol (decl.id, decl, decl.isGlobal);
 
     if(!IsTokenType(T_COLON)){
         errTable.ReportError(ERROR_MISSING_COLON, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
 
-    if(!TypeMark()){
+    if(!TypeMark(decl)){
         errTable.ReportError(ERROR_INVALID_TYPE_MARK, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
     
     if(IsTokenType(T_LBRACKET)){
-        if(!Bound()){
+        
+        decl.isArr = true;
+
+        if(!Bound(decl)){
             errTable.ReportError(ERROR_INVALID_BOUND, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
         }
@@ -250,20 +255,41 @@ bool Parser::VariableDeclaration(Symbol &decl){
             return false;
         }
     }
+
+    scoper->SetSymbol (decl.id, decl, decl.isGlobal);
+
     return true;
 }
 
-bool Parser::TypeMark(){
+bool Parser::TypeMark(Symbol &id){
     //std::cout << "TypeMark" << //std::endl;
-    if(IsTokenType(T_INTEGER) || IsTokenType(T_FLOAT) || 
-        IsTokenType(T_STRING) || IsTokenType(T_BOOL))
-        return true;
-    return false;
+    if (IsTokenType(T_INTEGER))
+        id.type = TYPE_INT;
+    else if (IsTokenType(T_FLOAT))
+        id.type = TYPE_FLOAT;
+    else if (IsTokenType(T_STRING))
+        id.type = TYPE_STRING;
+    else if (IsTokenType(T_BOOL))
+        id.type = TYPE_BOOL;
+    else
+        return false;
+    return true;
 }
 
-bool Parser::Bound(){
+bool Parser::Bound(Symbol &id){
     //std::cout << "Bound" << //std::endl;
-    return Number();
+    Symbol num;
+
+    int val = tok.val.intVal;
+
+    if(Number(num) && num.type == TYPE_INT){
+        id.arrBound = val;
+        return true;
+    }
+    else{
+        errTable.ReportError(ERROR_INVALID_BOUND, lexer->GetFileName(), lexer->GetLineNumber(), "Bound must be an integer");
+        return false;
+    }
 }
 
 bool Parser::Statement(){
@@ -277,27 +303,10 @@ bool Parser::Statement(){
     return true;
 }
 
-bool Parser::ProcedureCall(Symbol &id){
-    //std::cout << "ProcedureCall" << //std::endl;
-    if(!Identifier(id))
-        return false;
-
-    if(!IsTokenType(T_LPAREN))
-        return false;
-    
-    ArgumentList();
-
-    if (!IsTokenType(T_RPAREN)){
-        errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber());
-        return false;
-    }
-    return true;    
-}
-
 bool Parser::AssignmentStatement(){
     //std::cout << "AssignmentStatement" << //std::endl;
-    Symbol id;
-    if(!Destination(id))
+    Symbol decl;
+    if(!Destination(decl))
         return false;
 
     if (!IsTokenType(T_ASSIGNMENT)){
@@ -315,6 +324,13 @@ bool Parser::Destination(Symbol &id){
     if(!Identifier(id))
         return false;
     
+    if(!scoper->HasSymbol(id.id)){
+        errTable.ReportError(ERROR_SCOPE_DECLERATION, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\'");
+        return false;
+    }
+
+    id = scoper->GetSymbol(id.id);
+
     if(IsTokenType(T_LBRACKET)){         
         if (!Expression())
             return false;
@@ -427,8 +443,10 @@ bool Parser::ReturnStatement(){
 
 bool Parser::Identifier(Symbol &id){
     //std::cout <<"Identifier" << //std::endl;
-    id.id = tok.val.stringVal;
-    id.tt = tok.tt;
+    if (tok.tt == T_IDENTIFIER){
+        id.id = tok.val.stringVal;
+        id.tt = tok.tt;
+    }
     return IsTokenType(T_IDENTIFIER);
 }
 
@@ -542,14 +560,14 @@ bool Parser::Factor(){
     else if(ProcedureCallAssist(id)){}
     else if(IsTokenType(T_MINUS)){
         if (Name(id)){}
-        else if(Number()){}
+        else if(Number(id)){}
         else{
             errTable.ReportError(ERROR_INVALID_CHARACTER, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
         }
     }
-    else if (Number()){}
-    else if(IsTokenType(T_STRING_CONST)){}
+    else if(Number(id)){}
+    else if(String(id)){}
     else if(IsTokenType(T_TRUE) || IsTokenType(T_FALSE)){}
     else
         return false;
@@ -560,7 +578,14 @@ bool Parser::Name(Symbol &id){
     //std::cout << "Name" << //std::endl;
     if(!Identifier(id))
         return false;
-    
+        
+    if(!scoper->HasSymbol(id.id)){
+        errTable.ReportError(ERROR_SCOPE_DECLERATION, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\'");
+        return false;
+    }
+
+    id = scoper->GetSymbol(id.id);
+
     if (IsTokenType(T_LBRACKET)){
         if(!Expression())
             return false;
@@ -586,13 +611,33 @@ bool Parser::ArgumentList(){
     return true;
 }
 
-bool Parser::Number(){
+bool Parser::Number(Symbol &num){
     //std::cout << "Number" << //std::endl;
-    return (IsTokenType(T_INTEGER_CONST) || IsTokenType(T_FLOAT_CONST));
+
+    if(tok.tt == T_INTEGER_CONST){
+        num.type = TYPE_INT;
+        num.tt = T_INTEGER_CONST;
+
+        return IsTokenType(T_INTEGER_CONST);
+    }
+    else if(tok.tt == T_FLOAT_CONST){
+        num.type = TYPE_FLOAT;
+        num.tt = T_FLOAT_CONST;
+
+        return IsTokenType(T_FLOAT_CONST);
+    }
+    else
+        return false;
 }
 
-bool Parser::String(){
+bool Parser::String(Symbol &str){
     //std::cout << "String" << //std::endl;
+    if(tok.tt == T_STRING_CONST){
+        str.id = tok.val.stringVal;
+        str.tt = tok.tt;
+        str.type = TYPE_STRING;
+    }
+
     return IsTokenType(T_STRING_CONST);
 }
 
@@ -622,6 +667,16 @@ bool Parser::ProcedureCallAssist(Symbol &id){
     if (!Identifier(id))
         return false;
     
+    if(!scoper->HasSymbol(id.id)){
+        errTable.ReportError(ERROR_SCOPE_DECLERATION, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\'");
+        /*
+            Return false later
+        */
+        //return false;
+    }
+
+    id = scoper->GetSymbol(id.id);
+
     if(IsTokenType(T_LPAREN)){
         ArgumentList();
 

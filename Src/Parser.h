@@ -30,16 +30,15 @@ class Parser {
         bool VariableDeclaration(Symbol &decl);
         bool ProcedureHeader(Symbol &decl);
         bool ProcedureBody();
-        bool TypeMark();
+        bool TypeMark(Symbol &id);
         bool ParameterList(Symbol &decl);
         bool Parameter(Symbol &param);
-        bool Bound();
-        bool Number();
+        bool Bound(Symbol &id);
+        bool Number(Symbol &num);
         bool AssignmentStatement();
         bool IfStatement();
         bool LoopStatement();
         bool ReturnStatement();
-        bool ProcedureCall(Symbol &id);
         bool ProcedureCallAssist(Symbol &id);
         bool ArgumentList();
         bool Destination(Symbol &id);
@@ -53,7 +52,7 @@ class Parser {
         bool TermPrime();
         bool Factor();
         bool Name(Symbol &id);
-        bool String();
+        bool String(Symbol &str);
 };
 
 #endif
