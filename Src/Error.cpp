@@ -17,6 +17,9 @@ Error::Error(){
     errorTable[ERROR_INVALID_CHARACTER] = "Invalid character";
     errorTable[ERROR_INVALID_FACTOR] = "Invalid factor";
     errorTable[ERROR_INVALID_ARGUMENT] = "Invalid argument";
+    errorTable[ERROR_DUPLICATE_IDENTIFIER] = "Identifier exists in scope";
+    errorTable[ERROR_DUPLICATE_PROCEDURE] = "Procedure exists in scope";
+    errorTable[ERROR_DUPLICATE_VARIABLE] = "Variable exists in scope";    
     
     
     errorTable[ERROR_INVALID_IF] = "Invalid if statement";

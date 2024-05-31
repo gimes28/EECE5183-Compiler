@@ -26,13 +26,13 @@ class Parser {
         bool DeclarationAssist();
         bool Statement();
         bool StatementAssist();
-        bool ProcedureDeclaration(bool &isGlobal);
-        bool VariableDeclaration(bool &isGlobal);
-        bool ProcedureHeader(bool &isGlobal);
+        bool ProcedureDeclaration(Symbol &decl);
+        bool VariableDeclaration(Symbol &decl);
+        bool ProcedureHeader(Symbol &decl);
         bool ProcedureBody();
         bool TypeMark();
-        bool ParameterList();
-        bool Parameter();
+        bool ParameterList(Symbol &decl);
+        bool Parameter(Symbol &param);
         bool Bound();
         bool Number();
         bool AssignmentStatement();

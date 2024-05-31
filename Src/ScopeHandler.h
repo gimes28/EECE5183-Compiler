@@ -12,7 +12,6 @@ class ScopeHandler{
         void NewScope();
         void ExitScope();
         void SetSymbol(std::string str, Symbol sym, bool glob);
-        void SetProcSymbol(std::string str, Symbol sym, bool glob);
         Symbol GetSymbol(std::string str, bool glob);
         bool HasSymbol(std::string str, bool glob);
         void PrintScope(bool glob);

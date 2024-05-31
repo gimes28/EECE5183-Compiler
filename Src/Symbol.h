@@ -2,6 +2,7 @@
 #define SYMBOL_H
 
 #include "Token.h"
+#include <vector>
 
 // Symbols stored in the symbol table are identifiers or reserved words
 
@@ -34,8 +35,9 @@ struct Symbol{
     Type type;
     bool isArr;
     int arrBound;
+    bool isGlobal;
+
+    std::vector<Symbol> params;
 };
-
-
 
 #endif

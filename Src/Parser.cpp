@@ -45,7 +45,7 @@ bool Parser::Program(){
         errTable.ReportError(ERROR_MISSING_PERIOD, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
-    if(tok.tt != T_EOF)
+    if(!IsTokenType(T_EOF))
         return false;
     scoper->ExitScope();
     return true;
@@ -97,11 +97,12 @@ bool Parser::ProgramBody(){
 
 bool Parser::Declaration(){
     //std::cout <<"Declaration" << //std::endl;
-    bool isGlobal = IsTokenType(T_GLOBAL);
+    Symbol decl;
+    decl.isGlobal = IsTokenType(T_GLOBAL);
     //std::cout <<"Decleration Started" << //std::endl;
-    if (ProcedureDeclaration(isGlobal)) {
+    if (ProcedureDeclaration(decl)) {
         //std::cout <<"Proc Decleration Finished" << //std::endl;
-    } else if (VariableDeclaration(isGlobal)) {
+    } else if (VariableDeclaration(decl)) {
         //std::cout <<"Var Decleration Finished" << //std::endl;
     }
     else
@@ -109,28 +110,42 @@ bool Parser::Declaration(){
     return true;
 }
 
-bool Parser::ProcedureDeclaration(bool &isGlobal){
+bool Parser::ProcedureDeclaration(Symbol &decl){
     //std::cout <<"ProcedureDeclaration" << //std::endl;
-    if(!ProcedureHeader(isGlobal))
+    if(!ProcedureHeader(decl))
         return false;
+
+    if (scoper->HasSymbol(decl.id, decl.isGlobal)){
+        errTable.ReportError(ERROR_DUPLICATE_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + decl.id + "\'");
+        return false;
+    }
+    
     if(!ProcedureBody())
         return false;
     scoper->ExitScope();
+
+    if (!decl.isGlobal){
+        if (scoper->HasSymbol(decl.id, decl.isGlobal)){
+            errTable.ReportError(ERROR_DUPLICATE_PROCEDURE, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + decl.id + "\'");
+            return false;
+        }
+    }
+    scoper->SetSymbol(decl.id, decl, decl.isGlobal);
+
     return true;
 }
 
-bool Parser::ProcedureHeader(bool &isGlobal){
+bool Parser::ProcedureHeader(Symbol &decl){
     //std::cout <<"ProcedureHeader" << //std::endl;
     if(!IsTokenType(T_PROCEDURE))
         return false;
+
     scoper->NewScope();
 
-    Symbol id;
-    if (!Identifier(id)){
-        errTable.ReportError(ERROR_INVALID_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\'");
+    if (!Identifier(decl)){
+        errTable.ReportError(ERROR_INVALID_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + decl.id + "\'");
         return false;
     }
-    scoper->SetProcSymbol(id.id, id, isGlobal);
 
     if(!IsTokenType(T_COLON)){
         errTable.ReportError(ERROR_MISSING_COLON, lexer->GetFileName(), lexer->GetLineNumber());
@@ -147,7 +162,7 @@ bool Parser::ProcedureHeader(bool &isGlobal){
         return false;
     }
 
-    ParameterList();
+    ParameterList(decl);
 
     if(!IsTokenType(T_RPAREN)){
         errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber());
@@ -156,13 +171,16 @@ bool Parser::ProcedureHeader(bool &isGlobal){
     return true;
 }
 
-bool Parser::ParameterList(){
+bool Parser::ParameterList(Symbol &decl){
     //std::cout <<"ParameterList" << //std::endl;
-    if(!Parameter())
+    Symbol param;
+    if(!Parameter(param))
         return false;
 
+    decl.params.push_back(param);
+
     while(IsTokenType(T_COMMA)){
-        if (!Parameter()) {
+        if (!Parameter(param)) {
             errTable.ReportError(ERROR_INVALID_PARAMETER, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
         }
@@ -170,10 +188,9 @@ bool Parser::ParameterList(){
     return true;
 }
 
-bool Parser::Parameter(){
+bool Parser::Parameter(Symbol &param){
     //std::cout <<"Parameter" << //std::endl;
-    bool isGlobal = false;
-    return VariableDeclaration(isGlobal);
+    return VariableDeclaration(param);
 }
 
 bool Parser::ProcedureBody(){
@@ -201,17 +218,17 @@ bool Parser::ProcedureBody(){
     return true;
 }
 
-bool Parser::VariableDeclaration(bool &isGlobal){
+bool Parser::VariableDeclaration(Symbol &decl){
     //std::cout << "VariableDeclaration" << //std::endl;
     if (!IsTokenType(T_VARIABLE))
         return false;
 
-    Symbol id;
-    if (!Identifier(id)){
-        errTable.ReportError(ERROR_INVALID_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\'");
+    if (!Identifier(decl)){
+        errTable.ReportError(ERROR_DUPLICATE_VARIABLE, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + decl.id + "\'");
         return false;
     }
-    scoper->SetSymbol (id.id, id, isGlobal);
+
+    scoper->SetSymbol (decl.id, decl, decl.isGlobal);
 
     if(!IsTokenType(T_COLON)){
         errTable.ReportError(ERROR_MISSING_COLON, lexer->GetFileName(), lexer->GetLineNumber());
@@ -417,9 +434,8 @@ bool Parser::Identifier(Symbol &id){
 
 bool Parser::Expression(){
     //std::cout << "Expression" << //std::endl;
-    if(IsTokenType(T_NOT)){
+    bool notToken = IsTokenType(T_NOT);
 
-    }
     if(!ArithOp())
         return false;
 
@@ -535,10 +551,8 @@ bool Parser::Factor(){
     else if (Number()){}
     else if(IsTokenType(T_STRING_CONST)){}
     else if(IsTokenType(T_TRUE) || IsTokenType(T_FALSE)){}
-    else{
-        errTable.ReportError(ERROR_INVALID_FACTOR, lexer->GetFileName(), lexer->GetLineNumber());
+    else
         return false;
-    }
     return true;
 }
 

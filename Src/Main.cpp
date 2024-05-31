@@ -42,9 +42,6 @@ int main(int argc, char* args[])
 
     if (debugToggle){
         std::cout << std::endl << "Parsed: " << parsed << std::endl;
-
-        std::cout << std::endl << std::endl << "Global Symbol Table:" << std::endl;
-        scoper.PrintScope(true);
     }
-    return 0;
+    return !parsed;
 }

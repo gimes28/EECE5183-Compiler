@@ -63,20 +63,6 @@ void ScopeHandler::SetSymbol(std::string str, Symbol sym, bool glob) {
         local->SetSymbol(str, sym);
 }
 
-// Set symbol for procedure at procedure's scope and one above
-void ScopeHandler::SetProcSymbol(std::string str, Symbol sym, bool glob) {
-    // Add local within procedure, or globally
-    SetSymbol(str, sym, glob);
-
-    if (!glob) {
-        Scope* ptr = local->prevScope;
-        if (ptr != nullptr) {
-            if (!ptr->HasSymbol(str))
-                ptr->SetSymbol(str, sym);
-        }
-    }
-}
-
 Symbol ScopeHandler::GetSymbol(std::string str, bool glob) {
     if (glob)
         return global->GetSymbol(str);

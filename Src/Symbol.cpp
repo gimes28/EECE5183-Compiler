@@ -8,6 +8,7 @@ Symbol::Symbol(){
     this->type = TYPE_UNK;
     this->isArr = false;
     this->arrBound = 0;
+    this->isGlobal = false;
 }
 
 Symbol::Symbol(TokenType tt, std::string id){
@@ -17,6 +18,7 @@ Symbol::Symbol(TokenType tt, std::string id){
     this->type = TYPE_UNK;
     this->isArr = false;
     this->arrBound = 0;
+    this->isGlobal = false;
 }
 
 
@@ -27,4 +29,5 @@ Symbol::Symbol(TokenType tt, std::string id, SymbolType st, Type type){
     this->type = type;
     this->isArr = false;
     this->arrBound = 0;
+    this->isGlobal = false;
 }
