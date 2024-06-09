@@ -54,6 +54,10 @@ class Parser {
         bool Name(Symbol &id);
         bool String(Symbol &str);
         bool NameAssist(Symbol &id);
+
+        bool ArithmeticTypeCheck(Symbol &lhs, Symbol &rhs);
+        bool RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &tok);
+        bool ExpressionTypeCheck(Symbol &lhs, Symbol &rhs);
 };
 
 #endif

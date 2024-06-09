@@ -1,0 +1,20 @@
+program opstest is 
+    variable out : integer;
+    
+    procedure test : integer()
+        variable b : bool;
+        variable f : float;
+        variable s : string;
+        variable i : integer;        
+        variable res : integer;
+    begin
+        if (s <= s) then
+            res := -1;
+            return res;
+        end if;
+        res := 1;
+            return res;
+    end procedure;
+begin
+    out := test();
+end program.

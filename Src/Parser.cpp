@@ -470,6 +470,11 @@ bool Parser::Expression(Symbol &exp){
     if(!ArithOp(exp))
         return false;
 
+    if(notToken){
+        if(exp.type != TYPE_BOOL && exp.type != TYPE_INT)
+            errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber(), "\'not\' operator only defined for int and bool");
+    }
+
     if(!ExpressionPrime(exp))
         return false;
 
@@ -483,7 +488,7 @@ bool Parser::ExpressionPrime(Symbol &exp){
         if(!ArithOp(rhs))
             return false;
         
-        // Check and convert type for & and |
+        ExpressionTypeCheck(exp, rhs);
 
         if(!ExpressionPrime(exp))
             return false;
@@ -495,8 +500,6 @@ bool Parser::ArithOp(Symbol &aro){
     //std::cout << "ArithOp" << //std::endl;
     if(!Relation(aro))
         return false;
-    
-    // Check and convert type for + and -
 
     if(!ArithOpPrime(aro))
         return false;
@@ -511,6 +514,9 @@ bool Parser::ArithOpPrime(Symbol &aro){
         if(!Relation(rhs))
             return false;
         
+        if(!ArithmeticTypeCheck(aro, rhs))
+            return false;
+
         if(!ArithOpPrime(aro))
             return false;
     }
@@ -532,6 +538,8 @@ bool Parser::Relation(Symbol &rel){
 
 bool Parser::RelationPrime(Symbol &rel){
     //std::cout << "RelationPrime" << //std::endl;
+    Token op = tok;
+
     if(IsTokenType(T_LESS) || IsTokenType(T_LESS_EQ) || 
         IsTokenType(T_GREATER) || IsTokenType(T_GREATER_EQ) || 
         IsTokenType(T_EQUAL) || IsTokenType(T_NOT_EQUAL)){
@@ -539,6 +547,12 @@ bool Parser::RelationPrime(Symbol &rel){
         Symbol rhs;    
         if(!Term(rhs))
             return false;
+
+        // Check and convert type for relation ops
+        if(!RelationTypeCheck(rel, rhs, op))
+            return false;
+
+        rel.type = TYPE_BOOL;
 
         if(!RelationPrime(rel))
             return false;
@@ -563,8 +577,10 @@ bool Parser::TermPrime(Symbol &trm){
         Symbol rhs;
         if(!Factor(rhs))
             return false;
+        // Check and convert for *
 
-        // Check and convert type for * and /
+        if(!ArithmeticTypeCheck(trm, rhs))
+            return false;
 
         if(!TermPrime(trm))
             return false;
@@ -740,4 +756,81 @@ bool Parser::NameAssist(Symbol &id){
         }
     }
     return true;
+}
+
+bool Parser::ArithmeticTypeCheck(Symbol &lhs, Symbol &rhs){
+    if((lhs.type != TYPE_INT && lhs.type != TYPE_FLOAT) || (rhs.type != TYPE_INT && rhs.type != TYPE_FLOAT)){
+        errTable.ReportError(ERROR_INVALID_TYPE_CHECK, lexer->GetFileName(), lexer->GetLineNumber(), "Arithmetic only defined for int and float");
+        return false;
+    }
+
+    if(lhs.type == TYPE_INT){
+        if(rhs.type == TYPE_FLOAT)
+            // convert lhs to float 
+            lhs.type = TYPE_FLOAT;
+    }
+    else{
+        if(rhs.type == TYPE_INT)
+            // convert rhs to float 
+            rhs.type = TYPE_FLOAT;
+    }
+    return true;
+}
+
+bool Parser::RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &tok){
+    // if int is present with float or bool, convert int to respective type
+
+    bool comp = false;
+
+    if(lhs.type == TYPE_INT) {
+        if(rhs.type == TYPE_BOOL) {
+            comp = true;
+            lhs.type = TYPE_BOOL;
+        }
+        else if(rhs.type == TYPE_FLOAT) {
+            comp = true;
+            lhs.type = TYPE_FLOAT;
+        }
+        else if (rhs.type == TYPE_INT)
+            comp = true;
+    }
+    else if(lhs.type == TYPE_FLOAT) {
+        if(rhs.type == TYPE_FLOAT) 
+            comp = true;
+        else if(rhs.type == TYPE_INT) {
+            comp = true;
+            rhs.type = TYPE_FLOAT;
+        }
+    }
+    else if(lhs.type == TYPE_BOOL) {
+        if(rhs.type == TYPE_BOOL)
+            comp = true;
+        else if(rhs.type == TYPE_INT) {
+            comp = true;
+            rhs.type = TYPE_BOOL;
+        }
+    }
+    else if(lhs.type == TYPE_STRING) {
+        if(rhs.type == TYPE_STRING && (tok.tt == T_EQUAL || tok.tt == T_NOT_EQUAL))
+            comp = true;
+    }
+
+    if(!comp)
+        errTable.ReportError(ERROR_INVALID_RELATION, lexer->GetFileName(), lexer->GetLineNumber());
+    
+    return comp;
+}
+
+bool Parser::ExpressionTypeCheck(Symbol &lhs, Symbol &rhs){
+    bool comp = false;
+
+    if(lhs.type == TYPE_BOOL && rhs.type == TYPE_BOOL)
+        comp = true;
+    else if(lhs.type == TYPE_INT && rhs.type == TYPE_INT)
+        comp = true;
+    
+    if(!comp)
+        errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber(), "Expression operations only defined for int and bool");
+    
+    return comp;
 }

@@ -21,6 +21,9 @@ Error::Error(){
     errorTable[ERROR_DUPLICATE_PROCEDURE] = "Procedure exists in scope";
     errorTable[ERROR_DUPLICATE_VARIABLE] = "Variable exists in scope";    
     errorTable[ERROR_SCOPE_DECLERATION] = "Variable not declared in scope";
+    errorTable[ERROR_INVALID_TYPE_CHECK] = "Invalid type check";
+    errorTable[ERROR_INVALID_RELATION] = "Incompatible relation operation";
+    errorTable[ERROR_INVALID_EXPRESSION] = "Invalid expression operations";
     
     errorTable[ERROR_INVALID_IF] = "Invalid if statement";
     errorTable[ERROR_INVALID_LOOP] = "Invalid loop";
