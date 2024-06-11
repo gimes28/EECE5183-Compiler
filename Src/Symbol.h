@@ -34,7 +34,7 @@ struct Symbol{
     SymbolType st;
     Type type;
     bool isArr;
-    int arrBound;
+    int arrSize;
     bool isGlobal;
 
     std::vector<Symbol> params;

@@ -25,6 +25,31 @@ ScopeHandler::ScopeHandler() {
     global->SetSymbol("not", Symbol(T_NOT, "not", ST_KEYWORD, TYPE_UNK));
     global->SetSymbol("true", Symbol(T_TRUE, "true", ST_KEYWORD, TYPE_BOOL));
     global->SetSymbol("false", Symbol(T_FALSE, "false", ST_KEYWORD, TYPE_BOOL));
+
+    global->SetSymbol("getbool", Symbol(T_IDENTIFIER, "getbool", ST_PROCEDURE, TYPE_BOOL));
+    global->SetSymbol("getinteger", Symbol(T_IDENTIFIER, "getinteger", ST_PROCEDURE, TYPE_INT));
+    global->SetSymbol("getfloat", Symbol(T_IDENTIFIER, "getfloat", ST_PROCEDURE, TYPE_FLOAT));
+    global->SetSymbol("getstring", Symbol(T_IDENTIFIER, "getstring", ST_PROCEDURE, TYPE_STRING));
+
+    Symbol sym = Symbol(T_IDENTIFIER, "putbool", ST_PROCEDURE, TYPE_BOOL);
+    sym.params.push_back(Symbol(T_IDENTIFIER, "value", ST_VARIABLE, TYPE_BOOL));
+    global->SetSymbol("putbool", sym);
+
+    sym = Symbol(T_IDENTIFIER, "putinteger", ST_PROCEDURE, TYPE_BOOL);
+    sym.params.push_back(Symbol(T_IDENTIFIER, "value", ST_VARIABLE, TYPE_INT));
+    global->SetSymbol("putinteger", sym);
+
+    sym = Symbol(T_IDENTIFIER, "putfloat", ST_PROCEDURE, TYPE_BOOL);
+    sym.params.push_back(Symbol(T_IDENTIFIER, "value", ST_VARIABLE, TYPE_FLOAT));
+    global->SetSymbol("putfloat", sym);
+
+    sym = Symbol(T_IDENTIFIER, "putstring", ST_PROCEDURE, TYPE_BOOL);
+    sym.params.push_back(Symbol(T_IDENTIFIER, "value", ST_VARIABLE, TYPE_STRING));
+    global->SetSymbol("putstring", sym);
+
+    sym = Symbol(T_IDENTIFIER, "sqrt", ST_PROCEDURE, TYPE_FLOAT);
+    sym.params.push_back(Symbol(T_IDENTIFIER, "value", ST_VARIABLE, TYPE_INT));
+    global->SetSymbol("sqrt", sym);
 }
 
 ScopeHandler::~ScopeHandler() {

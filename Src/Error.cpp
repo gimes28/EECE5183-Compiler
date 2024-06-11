@@ -24,6 +24,7 @@ Error::Error(){
     errorTable[ERROR_INVALID_TYPE_CHECK] = "Invalid type check";
     errorTable[ERROR_INVALID_RELATION] = "Incompatible relation operation";
     errorTable[ERROR_INVALID_EXPRESSION] = "Invalid expression operations";
+    errorTable[ERROR_INVALID_ASSIGNMENT] = "Invalid assignment";
     
     errorTable[ERROR_INVALID_IF] = "Invalid if statement";
     errorTable[ERROR_INVALID_LOOP] = "Invalid loop";
