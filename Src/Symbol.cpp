@@ -31,3 +31,18 @@ Symbol::Symbol(TokenType tt, std::string id, SymbolType st, Type type){
     this->arrSize = 0;
     this->isGlobal = false;
 }
+
+std::string GetTypeName(Type typ){
+    switch(typ){
+        case(TYPE_INT):
+            return "Integer";
+        case(TYPE_FLOAT):
+            return "Float";
+        case(TYPE_BOOL):
+            return "Boolean";
+        case(TYPE_STRING):
+            return "String";
+        default:
+            return "Unknown";
+    }
+}

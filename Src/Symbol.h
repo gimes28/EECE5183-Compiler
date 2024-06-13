@@ -40,4 +40,6 @@ struct Symbol{
     std::vector<Symbol> params;
 };
 
+std::string GetTypeName(Type typ);
+
 #endif

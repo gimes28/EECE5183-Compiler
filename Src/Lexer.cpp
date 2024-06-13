@@ -187,11 +187,16 @@ Token Lexer::ScanToken(){
                     lineCount++;
                 else{
                     file.unget();
-                    errTable.ReportError(ERROR_INVALID_INPUT, fileName, lineCount);
+                    std::string errorChar;
+                    errorChar += ch;
+                    errTable.ReportError(ERROR_INVALID_INPUT, fileName, lineCount, "\'" + errorChar + "\'");
                 }
             }
-            else if (chClass == INVALID)
-                errTable.ReportError(ERROR_INVALID_INPUT, fileName, lineCount);
+            else if (chClass == INVALID){
+                std::string errorChar;
+                errorChar += ch;
+                errTable.ReportError(ERROR_INVALID_CHARACTER, fileName, lineCount, "\'" + errorChar + "\'");
+            }
 
         } while(chClass == SPACE || chClass == INVALID);
 

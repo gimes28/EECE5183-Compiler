@@ -17,6 +17,8 @@ class Parser {
         Lexer* lexer;
         ScopeHandler* scoper;
         bool debugOption = false;
+        bool listError = false;
+
         bool IsTokenType(TokenType tok);
         bool Program();
         bool ProgramHeader();
@@ -40,7 +42,7 @@ class Parser {
         bool LoopStatement();
         bool ReturnStatement();
         bool ProcedureCallAssist(Symbol &id);
-        bool ArgumentList();
+        bool ArgumentList(Symbol &id);
         bool Destination(Symbol &id);
         bool Expression(Symbol &exp);
         bool ExpressionPrime(Symbol &exp);
@@ -58,7 +60,7 @@ class Parser {
         bool ArithmeticTypeCheck(Symbol &lhs, Symbol &rhs);
         bool RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &tok);
         bool ExpressionTypeCheck(Symbol &lhs, Symbol &rhs);
-        bool AssignmentTypeCheck(Symbol &dest, Symbol &exp);
+        bool CompatibleTypeCheck(Symbol &dest, Symbol &exp);
         
 };
 

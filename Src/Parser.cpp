@@ -167,6 +167,9 @@ bool Parser::ProcedureHeader(Symbol &decl){
     }
 
     ParameterList(decl);
+    
+    if(listError)
+        return false;
 
     if(!IsTokenType(T_RPAREN)){
         errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \')\' in procedure header");
@@ -186,6 +189,7 @@ bool Parser::ParameterList(Symbol &decl){
     while(IsTokenType(T_COMMA)){
         if (!Parameter(param)) {
             errTable.ReportError(ERROR_INVALID_PARAMETER, lexer->GetFileName(), lexer->GetLineNumber());
+            listError = true;
             return false;
         }
 
@@ -232,6 +236,12 @@ bool Parser::VariableDeclaration(Symbol &decl){
     decl.st = ST_VARIABLE;
 
     if (!Identifier(decl)){
+        errTable.ReportError(ERROR_INVALID_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + decl.id + "\'");
+        return false;
+    }
+
+    // Check duplicate variable
+    if(scoper->HasSymbol(decl.id, decl.isGlobal)){
         errTable.ReportError(ERROR_DUPLICATE_VARIABLE, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + decl.id + "\'");
         return false;
     }
@@ -319,7 +329,7 @@ bool Parser::AssignmentStatement(){
     if (!Expression(exp))
         return false;
     
-    if(!AssignmentTypeCheck(dest, exp))
+    if(!CompatibleTypeCheck(dest, exp))
         return false;
 
     return true;    
@@ -654,21 +664,51 @@ bool Parser::Name(Symbol &id){
     return true;
 }
 
-bool Parser::ArgumentList(){
+bool Parser::ArgumentList(Symbol &id){
     //std::cout << "ArgumentList" << //std::endl;
-    Symbol exp;
-    if(!Expression(exp))
-        return false;
+    Symbol arg;
+    int ind = 0;
 
-    // Check type match to param
-    
+    do
+    {   
+        if(ind > 0)
+            arg = Symbol();
+
+        if(!Expression(arg)){
+            if(ind != id.params.size())
+                errTable.ReportError(ERROR_INVALID_ASSIGNMENT, lexer->GetFileName(), lexer->GetLineNumber(), "Too few arguments provided to \'" + id.id + "\'");
+            return false;
+        }
+
+        // Check number of params
+        if(ind >= id.params.size()){
+            errTable.ReportError(ERROR_INVALID_ASSIGNMENT, lexer->GetFileName(), lexer->GetLineNumber(), "Too many arguments provided to \'" + id.id + "\'");
+            return false;
+        }
+        // Check type match to param
+        else if(!CompatibleTypeCheck(id.params[ind], arg)){
+            return false;
+        }
+
+        ind++;
+
+    } while (IsTokenType(T_COMMA));
+
+    /*
     while(IsTokenType(T_COMMA)){
         exp = Symbol();
         if(!Expression(exp)){
+            listError = true;
             errTable.ReportError(ERROR_INVALID_ARGUMENT, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
         }
         // Check type match to param
+    }*/
+
+
+    if(ind != id.params.size()){
+        errTable.ReportError(ERROR_INVALID_ASSIGNMENT, lexer->GetFileName(), lexer->GetLineNumber(), "Too few arguments provided to \'" + id.id + "\'");
+        return false;
     }
     return true;
 }
@@ -737,7 +777,9 @@ bool Parser::ProcedureCallAssist(Symbol &id){
     id = scoper->GetSymbol(id.id);
 
     if(IsTokenType(T_LPAREN)){
-        ArgumentList();
+        ArgumentList(id);
+        if(listError)
+            return false; 
 
         if (!IsTokenType(T_RPAREN)){
             errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \')\' in procedure call");
@@ -850,7 +892,7 @@ bool Parser::ExpressionTypeCheck(Symbol &lhs, Symbol &rhs){
     return comp;
 }
 
-bool Parser::AssignmentTypeCheck(Symbol &dest, Symbol &exp){
+bool Parser::CompatibleTypeCheck(Symbol &dest, Symbol &exp){
     bool comp = false;
 
     // int == bool
@@ -890,7 +932,7 @@ bool Parser::AssignmentTypeCheck(Symbol &dest, Symbol &exp){
     }
 
     if(!comp)
-        errTable.ReportError(ERROR_INVALID_ASSIGNMENT, lexer->GetFileName(), lexer->GetLineNumber(), "Incompatible assignment types");
+        errTable.ReportError(ERROR_INVALID_ASSIGNMENT, lexer->GetFileName(), lexer->GetLineNumber(), "Incompatible types for " + GetTypeName(dest.type) + " and " + GetTypeName(exp.type));
     
     return comp;
 }
