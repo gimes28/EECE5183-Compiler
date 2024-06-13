@@ -26,6 +26,7 @@ Error::Error(){
     errorTable[ERROR_INVALID_EXPRESSION] = "Invalid expression operations";
     errorTable[ERROR_INVALID_ASSIGNMENT] = "Invalid assignment";
     errorTable[ERROR_INVALID_RETURN] = "Invalid return";
+    errorTable[ERROR_INVALID_ARRAY_INDEX] = "Invalid array";
     
     errorTable[ERROR_INVALID_IF] = "Invalid if statement";
     errorTable[ERROR_INVALID_LOOP] = "Invalid loop";

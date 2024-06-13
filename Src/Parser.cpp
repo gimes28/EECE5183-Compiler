@@ -260,13 +260,13 @@ bool Parser::VariableDeclaration(Symbol &decl){
     }
     
     if(IsTokenType(T_LBRACKET)){
-        
-        decl.isArr = true;
-
         if(!Bound(decl)){
             errTable.ReportError(ERROR_INVALID_BOUND, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
         }
+
+        decl.isArr = true;
+
         if(!IsTokenType(T_RBRACKET)){
             errTable.ReportError(ERROR_MISSING_BRACKET, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \']\' in variable bound");
             return false;
@@ -800,12 +800,19 @@ bool Parser::ArrayIndexAssist(Symbol &id){
         if(!Expression(exp))
             return false;
         
-        if(exp.type != TYPE_INT) {
-            errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber(), "Array index must be an integer");
+        if(!id.isArr){
+            errTable.ReportError(ERROR_INVALID_ARRAY_INDEX, lexer->GetFileName(), lexer->GetLineNumber(), "/'" +  id.id + "/' is not an array");
+            return false;
+        }
+        else if(exp.type != TYPE_INT){
+            errTable.ReportError(ERROR_INVALID_ARRAY_INDEX, lexer->GetFileName(), lexer->GetLineNumber(), "Array index must be an integer");
             return false;
         }
 
         // check exp value < id.arrSize
+
+        // Array is indexed
+        id.isIndexed = true;
 
         if(!IsTokenType(T_RBRACKET)){
             errTable.ReportError(ERROR_MISSING_BRACKET, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \']\' in name");
@@ -897,8 +904,9 @@ bool Parser::CompatibleTypeCheck(Symbol &dest, Symbol &exp){
 
     // int == bool
     // int == float 
-
-    if(dest.type == TYPE_INT){
+    if(dest.type == exp.type)
+        comp = true;
+    else if(dest.type == TYPE_INT){
         if(exp.type == TYPE_BOOL){
             comp = true;
             exp.type = TYPE_INT;
@@ -907,32 +915,57 @@ bool Parser::CompatibleTypeCheck(Symbol &dest, Symbol &exp){
             comp = true;
             exp.type = TYPE_INT;
         }
-        else if(exp.type == TYPE_INT)
-            comp = true;
     }
     else if(dest.type == TYPE_FLOAT){
         if(exp.type == TYPE_INT){
             comp = true;
             exp.type = TYPE_FLOAT;
         }
-        else if(exp.type == TYPE_FLOAT)
-            comp = true;
     }
     else if(dest.type == TYPE_BOOL){
         if(exp.type == TYPE_INT){
             comp = true;
             exp.type = TYPE_BOOL;
         }
-        else if(exp.type == TYPE_BOOL)
-            comp = true;
-    }
-    else if(dest.type == TYPE_STRING){
-        if(exp.type == TYPE_STRING)
-            comp = true;
     }
 
     if(!comp)
         errTable.ReportError(ERROR_INVALID_ASSIGNMENT, lexer->GetFileName(), lexer->GetLineNumber(), "Incompatible types for " + GetTypeName(dest.type) + " and " + GetTypeName(exp.type));
     
+    /*
+    Check for valid matching with isArr and isIndexed
+    - var = var
+    - arr = arr
+    - arr[i] = arr[i]
+    - arr[i] = var
+    - var = arr[i]    
+    */
+    
+    if(dest.isArr || exp.isArr){
+        // Both arrays
+        if(dest.isArr && exp.isArr){
+            // Array indexes must match
+            if(dest.isIndexed != exp.isIndexed){
+                errTable.ReportError(ERROR_INVALID_ARRAY_INDEX, lexer->GetFileName(), lexer->GetLineNumber(), "Incompatible matching index arrays");
+                comp = false;
+            }
+            else if(!dest.isIndexed){
+                if(dest.arrSize != exp.arrSize){
+                    errTable.ReportError(ERROR_INVALID_ARRAY_INDEX, lexer->GetFileName(), lexer->GetLineNumber(), "Array lengths must match");
+                    comp = false;
+                }
+            }
+        }
+        else{
+            // One side is array or array must be indexed
+            if((dest.isArr && !dest.isIndexed) || (exp.isArr && !exp.isIndexed)){
+                errTable.ReportError(ERROR_INVALID_ARRAY_INDEX, lexer->GetFileName(), lexer->GetLineNumber(), "Array is not indexed");
+                comp = false;
+            }
+        } 
+    }
+    // Both are not arrays
+
+
     return comp;
 }
