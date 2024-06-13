@@ -122,6 +122,9 @@ bool Parser::ProcedureDeclaration(Symbol &decl){
     }
 
     scoper->SetSymbol(decl.id, decl, decl.isGlobal);
+
+    // Set inside function so procedure symbol can be easily found for return type checking
+    scoper->SetCurrentProcedure(decl);
     
     if(!ProcedureBody())
         return false;
@@ -347,22 +350,8 @@ bool Parser::Destination(Symbol &id){
 
     id = scoper->GetSymbol(id.id);
 
-    if(IsTokenType(T_LBRACKET)){      
-        Symbol exp;   
-        if (!Expression(exp))
-            return false;
-        
-        // Check access
-        if(exp.type != TYPE_INT) {
-            errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber(), "Array access expression must be an integer");
-            return false;
-        }
-
-        if (!IsTokenType(T_RBRACKET)){
-            errTable.ReportError(ERROR_MISSING_BRACKET, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \']\' in destination");
-            return false;
-        }   
-    }
+    if(!ArrayIndexAssist(id))
+        return false;
     return true; 
 }
 
@@ -473,7 +462,16 @@ bool Parser::ReturnStatement(){
     Symbol exp;
     if(!Expression(exp))
         return false;
-
+    
+    // Type check match to procedure return type
+    Symbol proc = scoper->GetCurrentProcedure();
+    if(proc.type == TYPE_UNK){
+        errTable.ReportError(ERROR_INVALID_RETURN, lexer->GetFileName(), lexer->GetLineNumber(), "Return statement must be within procedure");
+        return false;
+    }
+    else if(!CompatibleTypeCheck(proc, exp)){
+        return false;
+    }
     return true;
 }
 
@@ -658,7 +656,7 @@ bool Parser::Name(Symbol &id){
 
     id = scoper->GetSymbol(id.id);
 
-    if (!NameAssist(id)){
+    if (!ArrayIndexAssist(id)){
         return false;
     }
     return true;
@@ -788,20 +786,22 @@ bool Parser::ProcedureCallAssist(Symbol &id){
         return true;  
     }
     else{
-        if(!NameAssist(id))
+        // Check array access
+        if(!ArrayIndexAssist(id))
             return false;
     }
     return true;
 }
 
-bool Parser::NameAssist(Symbol &id){
+// Handle array index access
+bool Parser::ArrayIndexAssist(Symbol &id){
     if (IsTokenType(T_LBRACKET)){
         Symbol exp;
         if(!Expression(exp))
             return false;
         
         if(exp.type != TYPE_INT) {
-            errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber(), "Array access expression must be an integer");
+            errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber(), "Array index must be an integer");
             return false;
         }
 

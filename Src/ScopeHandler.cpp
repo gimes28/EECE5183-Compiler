@@ -110,6 +110,16 @@ bool ScopeHandler::HasSymbol(std::string str) {
     return local->HasSymbol(str) || global->HasSymbol(str);
 }
 
+// Set current procedure symbol in  local scope 
+void ScopeHandler::SetCurrentProcedure(Symbol proc){
+    local->SetSymbol(CUR_PROC, proc);
+}
+
+// Find symbol for current procedure
+Symbol ScopeHandler::GetCurrentProcedure(){
+    return local->GetSymbol(CUR_PROC);
+}
+
 void ScopeHandler::PrintScope(bool glob) {
     if (glob)
         global->PrintSymbolTable();

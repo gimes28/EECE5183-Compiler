@@ -36,6 +36,7 @@ struct Symbol{
     bool isArr;
     int arrSize;
     bool isGlobal;
+    bool isIndexed;
 
     std::vector<Symbol> params;
 };

@@ -9,6 +9,7 @@ Symbol::Symbol(){
     this->isArr = false;
     this->arrSize = 0;
     this->isGlobal = false;
+    this->isIndexed = false;
 }
 
 Symbol::Symbol(TokenType tt, std::string id){
@@ -19,6 +20,7 @@ Symbol::Symbol(TokenType tt, std::string id){
     this->isArr = false;
     this->arrSize = 0;
     this->isGlobal = false;
+    this->isIndexed = false;
 }
 
 
@@ -30,6 +32,7 @@ Symbol::Symbol(TokenType tt, std::string id, SymbolType st, Type type){
     this->isArr = false;
     this->arrSize = 0;
     this->isGlobal = false;
+    this->isIndexed = false;
 }
 
 std::string GetTypeName(Type typ){

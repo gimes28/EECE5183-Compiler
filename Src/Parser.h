@@ -25,9 +25,7 @@ class Parser {
         bool ProgramBody();
         bool Identifier(Symbol &id);
         bool Declaration();
-        bool DeclarationAssist();
         bool Statement();
-        bool StatementAssist();
         bool ProcedureDeclaration(Symbol &decl);
         bool VariableDeclaration(Symbol &decl);
         bool ProcedureHeader(Symbol &decl);
@@ -41,7 +39,6 @@ class Parser {
         bool IfStatement();
         bool LoopStatement();
         bool ReturnStatement();
-        bool ProcedureCallAssist(Symbol &id);
         bool ArgumentList(Symbol &id);
         bool Destination(Symbol &id);
         bool Expression(Symbol &exp);
@@ -55,7 +52,11 @@ class Parser {
         bool Factor(Symbol &fac);
         bool Name(Symbol &id);
         bool String(Symbol &str);
-        bool NameAssist(Symbol &id);
+        
+        bool DeclarationAssist();
+        bool StatementAssist();
+        bool ProcedureCallAssist(Symbol &id);
+        bool ArrayIndexAssist(Symbol &id);
 
         bool ArithmeticTypeCheck(Symbol &lhs, Symbol &rhs);
         bool RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &tok);

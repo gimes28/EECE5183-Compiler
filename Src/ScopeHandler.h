@@ -16,11 +16,16 @@ class ScopeHandler{
         Symbol GetSymbol(std::string str);
         bool HasSymbol(std::string str, bool glob);
         bool HasSymbol(std::string str);
+        void SetCurrentProcedure(Symbol proc);
+        Symbol GetCurrentProcedure();
         void PrintScope(bool glob);
     private:
         Scope* global;
         Scope* local;
         bool debugOption = false;
+
+        // Created to find the current procedure symbol in the local scope
+        std::string CUR_PROC = "CUR_PROC";
 };
 
 #endif
