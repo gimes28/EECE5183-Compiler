@@ -72,7 +72,7 @@ void Parser::OutputAssembly(){
 
     module->setDataLayout(targetMachine->createDataLayout());
 
-    std::string filename = "out.s";
+    std::string filename = "out.o";
     std::error_code errCode;
     llvm::raw_fd_ostream dest(filename, errCode, llvm::sys::fs::OF_None);
 
