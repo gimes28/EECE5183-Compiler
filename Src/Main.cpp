@@ -40,6 +40,8 @@ int main(int argc, char* args[])
 
     bool parsed = parser.Parse();
 
+    parser.OutputAssembly();
+
     if (debugToggle){
         std::cout << std::endl << "Parsed: " << parsed << std::endl;
     }

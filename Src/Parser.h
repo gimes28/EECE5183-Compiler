@@ -6,12 +6,18 @@
 #include "ScopeHandler.h"
 #include "Symbol.h"
 
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/IRBuilder.h"
+
 class Parser {
     public:
         Parser(Lexer* lexerPtr, ScopeHandler* scoperPtr);
         ~Parser();
         void SetDebugOption(bool debug);
         bool Parse();
+
+        void OutputAssembly();
     private:
         Token tok;
         Lexer* lexer;
@@ -62,7 +68,11 @@ class Parser {
         bool RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &tok);
         bool ExpressionTypeCheck(Symbol &lhs, Symbol &rhs);
         bool CompatibleTypeCheck(Symbol &dest, Symbol &exp);
-        
+
+        llvm::LLVMContext *context;
+        llvm::IRBuilder<> *builder;   
+        llvm::Module *module;
+     
 };
 
 #endif

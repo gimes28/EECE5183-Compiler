@@ -4,11 +4,26 @@
 #include "ScopeHandler.h"
 #include "Symbol.h"
 
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/Verifier.h"
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/Host.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/MC/TargetRegistry.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Target/TargetMachine.h"
+
+
+
 #include <iostream>
 
 Parser::Parser(Lexer* lexerptr, ScopeHandler* scoperPtr){
     lexer = lexerptr;
     scoper = scoperPtr;
+
+    context = new llvm::LLVMContext();
+    builder = new llvm::IRBuilder<>(*context);
+    module = new llvm::Module("llvm", *context);
 }
 
 Parser::~Parser(){
@@ -25,6 +40,57 @@ bool Parser::IsTokenType(TokenType token){
 
 void Parser::SetDebugOption(bool debug){
     debugOption = debug;
+}
+
+void Parser::OutputAssembly(){
+
+    // Initlalize target registry
+    llvm::InitializeAllTargetInfos();
+    llvm::InitializeAllTargets();
+    llvm::InitializeAllTargetMCs();
+    llvm::InitializeAllAsmParsers();
+    llvm::InitializeAllAsmPrinters();
+
+    auto targetTriple = llvm::sys::getDefaultTargetTriple();
+    module->setTargetTriple(targetTriple);
+
+    std::string err;
+    auto target = llvm::TargetRegistry::lookupTarget(targetTriple, err);
+
+    // If no targets are found
+    if(!target){
+        llvm::errs();
+        return;
+    }
+
+    auto cpu = "generic";
+    auto features = "";
+
+    llvm::TargetOptions opt;
+    auto rm = llvm::Optional<llvm::Reloc::Model>();
+    auto targetMachine = target->createTargetMachine(targetTriple, cpu, features, opt, rm);
+
+    module->setDataLayout(targetMachine->createDataLayout());
+
+    std::string filename = "out.s";
+    std::error_code errCode;
+    llvm::raw_fd_ostream dest(filename, errCode, llvm::sys::fs::OF_None);
+
+    if(errCode){
+        llvm::errs() << "Could not open output file: " << errCode.message();
+        return;
+    }
+
+    llvm::legacy::PassManager pm;
+    auto fileType = llvm::CGFT_AssemblyFile;
+
+    if (targetMachine->addPassesToEmitFile(pm, dest, nullptr, fileType)) {
+        llvm::errs() << "TargetMachine cannot emit a file of this type.";
+        return;
+    }
+
+    pm.run(*module);
+    dest.flush();
 }
 
 bool Parser::Parse(){
