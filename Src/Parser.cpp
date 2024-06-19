@@ -4,16 +4,15 @@
 #include "ScopeHandler.h"
 #include "Symbol.h"
 
+#include "llvm/IR/Constants.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetMachine.h"
-
-
 
 #include <iostream>
 
@@ -21,13 +20,14 @@ Parser::Parser(Lexer* lexerptr, ScopeHandler* scoperPtr){
     lexer = lexerptr;
     scoper = scoperPtr;
 
-    context = new llvm::LLVMContext();
-    builder = new llvm::IRBuilder<>(*context);
-    module = new llvm::Module("llvm", *context);
+    llvmContext = new llvm::LLVMContext();
+    llvmBuilder = new llvm::IRBuilder<>(*llvmContext);
 }
 
 Parser::~Parser(){
-
+    delete llvmContext;
+    delete llvmBuilder;
+    delete llvmModule;
 }
 
 bool Parser::IsTokenType(TokenType token){
@@ -52,7 +52,7 @@ void Parser::OutputAssembly(){
     llvm::InitializeAllAsmPrinters();
 
     auto targetTriple = llvm::sys::getDefaultTargetTriple();
-    module->setTargetTriple(targetTriple);
+    llvmModule->setTargetTriple(targetTriple);
 
     std::string err;
     auto target = llvm::TargetRegistry::lookupTarget(targetTriple, err);
@@ -70,7 +70,7 @@ void Parser::OutputAssembly(){
     auto rm = llvm::Optional<llvm::Reloc::Model>();
     auto targetMachine = target->createTargetMachine(targetTriple, cpu, features, opt, rm);
 
-    module->setDataLayout(targetMachine->createDataLayout());
+    llvmModule->setDataLayout(targetMachine->createDataLayout());
 
     std::string filename = "out.o";
     std::error_code errCode;
@@ -89,11 +89,18 @@ void Parser::OutputAssembly(){
         return;
     }
 
-    pm.run(*module);
+    pm.run(*llvmModule);
     dest.flush();
 }
 
 bool Parser::Parse(){
+
+    bool err = llvm::verifyModule(*llvmModule, &llvm::errs());
+    if (err){
+        errTable.ReportError(ERROR_LLVM_INVALID_MODULE, lexer->GetFileName(), lexer->GetLineNumber());
+        return false;
+    }    
+
     tok = lexer->InitScan();
     return Program();
 }
@@ -127,6 +134,8 @@ bool Parser::ProgramHeader(){
         return false;
     }
 
+    llvmModule = new llvm::Module(id.id, *llvmContext);
+
     if(!IsTokenType(T_IS)){
         errTable.ReportError(ERROR_INVALID_HEADER, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'is\' in program header");
         return false;
@@ -145,6 +154,15 @@ bool Parser::ProgramBody(){
         return false;
     }
 
+    // Code gen: main function 
+    std::vector<llvm::Type*> params;
+    llvm::FunctionType *funcType = llvm::FunctionType::get(llvmBuilder->getInt32Ty(), params, false);
+    llvm::Function *func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "main", *llvmModule);
+
+    // Code gen: main entry point 
+    llvm::BasicBlock *entry = llvm::BasicBlock::Create(*llvmContext, "entry", func);
+    llvmBuilder->SetInsertPoint(entry);
+
     if (!StatementAssist())
         return false;
     
@@ -157,6 +175,11 @@ bool Parser::ProgramBody(){
         errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'program\' in program body");
         return false;
     }
+
+    // Code Gen: Return Main function, return 0
+    llvm::Value *retVal = llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 0, true));
+    llvmBuilder->CreateRet(retVal);
+
     return true;
 }
 

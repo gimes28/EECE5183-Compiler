@@ -7,6 +7,7 @@ Error::Error(){
     errorTable[ERROR_INVALID_INPUT] = "Invalid input";
     errorTable[ERROR_FAIL_TO_OPEN] = "Failed to open";
     errorTable[ERROR_EOF] = "End of file";
+    errorTable[ERROR_LLVM_INVALID_MODULE] = "Errors in LLVM Module";
     errorTable[ERROR_INVALID_HEADER] = "Invalid header";
     errorTable[ERROR_INVALID_BODY] = "Invalid body";
     errorTable[ERROR_INVALID_DECLARATION] = "Invalid declaration";
@@ -27,12 +28,9 @@ Error::Error(){
     errorTable[ERROR_INVALID_ASSIGNMENT] = "Invalid assignment";
     errorTable[ERROR_INVALID_RETURN] = "Invalid return";
     errorTable[ERROR_INVALID_ARRAY_INDEX] = "Invalid array";
-    
     errorTable[ERROR_INVALID_IF] = "Invalid if statement";
     errorTable[ERROR_INVALID_LOOP] = "Invalid loop";
     errorTable[ERROR_INVALID_RETURN] = "Invalid return";
-
-
     errorTable[ERROR_MISSING_SEMICOLON] = "Missing semicolon";
     errorTable[ERROR_MISSING_COLON] = "Missing colon";
     errorTable[ERROR_MISSING_BRACKET] = "Missing bracket";

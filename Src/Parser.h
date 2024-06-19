@@ -69,9 +69,9 @@ class Parser {
         bool ExpressionTypeCheck(Symbol &lhs, Symbol &rhs);
         bool CompatibleTypeCheck(Symbol &dest, Symbol &exp);
 
-        llvm::LLVMContext *context;
-        llvm::IRBuilder<> *builder;   
-        llvm::Module *module;
+        llvm::LLVMContext *llvmContext;
+        llvm::IRBuilder<> *llvmBuilder;   
+        llvm::Module *llvmModule;
      
 };
 

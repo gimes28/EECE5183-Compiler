@@ -2,6 +2,10 @@
 #define SYMBOL_H
 
 #include "Token.h"
+
+#include "llvm/IR/Function.h"
+#include "llvm/IR/Value.h"
+
 #include <vector>
 
 // Symbols stored in the symbol table are identifiers or reserved words
@@ -39,6 +43,9 @@ struct Symbol{
     bool isIndexed;
 
     std::vector<Symbol> params;
+
+    llvm::Value *llvmValues;
+    llvm::Function *llvmFunction;
 };
 
 std::string GetTypeName(Type typ);

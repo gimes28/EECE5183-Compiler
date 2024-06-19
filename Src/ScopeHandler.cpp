@@ -53,10 +53,10 @@ ScopeHandler::ScopeHandler() {
 }
 
 ScopeHandler::~ScopeHandler() {
-    if (global != local) {
-        delete global;
+    while (global != local) {
+        ExitScope();
     }
-    delete local;
+    delete global;
 }
 
 void ScopeHandler::SetDebugOption(bool debug){
