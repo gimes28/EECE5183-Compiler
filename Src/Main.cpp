@@ -39,11 +39,12 @@ int main(int argc, char* args[])
         return 1;
 
     bool parsed = parser.Parse();
-
-    parser.OutputAssembly();
+    bool codeGened = parser.OutputAssembly();
 
     if (debugToggle){
         std::cout << std::endl << "Parsed: " << parsed << std::endl;
+        std::cout << std::endl << "Code Generated: " << codeGened << std::endl;
     }
-    return !parsed;
+
+    return !(parsed && codeGened);
 }

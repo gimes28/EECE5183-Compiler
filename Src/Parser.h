@@ -17,7 +17,7 @@ class Parser {
         void SetDebugOption(bool debug);
         bool Parse();
 
-        void OutputAssembly();
+        bool OutputAssembly();
     private:
         Token tok;
         Lexer* lexer;

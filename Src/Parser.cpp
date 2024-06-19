@@ -25,9 +25,9 @@ Parser::Parser(Lexer* lexerptr, ScopeHandler* scoperPtr){
 }
 
 Parser::~Parser(){
-    delete llvmContext;
     delete llvmBuilder;
     delete llvmModule;
+    delete llvmContext;
 }
 
 bool Parser::IsTokenType(TokenType token){
@@ -42,7 +42,13 @@ void Parser::SetDebugOption(bool debug){
     debugOption = debug;
 }
 
-void Parser::OutputAssembly(){
+bool Parser::OutputAssembly(){
+
+    bool errMod = llvm::verifyModule(*llvmModule, &llvm::errs());
+    if (errMod){
+        errTable.ReportError(ERROR_LLVM_INVALID_MODULE, lexer->GetFileName(), lexer->GetLineNumber());
+        return false;
+    }  
 
     // Initlalize target registry
     llvm::InitializeAllTargetInfos();
@@ -59,8 +65,8 @@ void Parser::OutputAssembly(){
 
     // If no targets are found
     if(!target){
-        llvm::errs();
-        return;
+        llvm::errs() << err;
+        return false;
     }
 
     auto cpu = "generic";
@@ -78,7 +84,7 @@ void Parser::OutputAssembly(){
 
     if(errCode){
         llvm::errs() << "Could not open output file: " << errCode.message();
-        return;
+        return false;
     }
 
     llvm::legacy::PassManager pm;
@@ -86,21 +92,16 @@ void Parser::OutputAssembly(){
 
     if (targetMachine->addPassesToEmitFile(pm, dest, nullptr, fileType)) {
         llvm::errs() << "TargetMachine cannot emit a file of this type.";
-        return;
+        return false;
     }
 
     pm.run(*llvmModule);
     dest.flush();
+
+    return true;
 }
 
 bool Parser::Parse(){
-
-    bool err = llvm::verifyModule(*llvmModule, &llvm::errs());
-    if (err){
-        errTable.ReportError(ERROR_LLVM_INVALID_MODULE, lexer->GetFileName(), lexer->GetLineNumber());
-        return false;
-    }    
-
     tok = lexer->InitScan();
     return Program();
 }
