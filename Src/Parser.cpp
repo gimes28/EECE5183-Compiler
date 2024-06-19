@@ -712,8 +712,17 @@ bool Parser::Factor(Symbol &fac){
     }
     else if(ProcedureCallAssist(fac)){}
     else if(IsTokenType(T_MINUS)){
-        if (Name(fac)){}
-        else if(Number(fac)){}
+        if (Name(fac) || Number(fac)){
+            // Code Gen: Negative
+            if(fac.type == TYPE_INT)
+                fac.llvmValue = llvmBuilder->CreateNeg(fac.llvmValue);
+            else if(fac.type == TYPE_FLOAT)
+                fac.llvmValue = llvmBuilder->CreateFNeg(fac.llvmValue);
+            else{
+                errTable.ReportError(ERROR_INVALID_RELATION, lexer->GetFileName(), lexer->GetLineNumber(), "Minus operator only valid on integers or floats");
+                return false;
+            }            
+        }
         else{
             errTable.ReportError(ERROR_INVALID_CHARACTER, lexer->GetFileName(), lexer->GetLineNumber(), "Invalid use of \'-\'");
             return false;
@@ -724,10 +733,14 @@ bool Parser::Factor(Symbol &fac){
     else if(IsTokenType(T_TRUE)){
         fac.tt = T_TRUE;
         fac.type = TYPE_BOOL;
+        // Code Gen: True
+        fac.llvmValue = llvm::ConstantInt::getTrue(*llvmContext);
     }
     else if(IsTokenType(T_FALSE)){
         fac.tt = T_FALSE;
         fac.type = TYPE_BOOL;
+        // Code Gen: False
+        fac.llvmValue = llvm::ConstantInt::getFalse(*llvmContext);
     }
     else
         return false;
@@ -807,6 +820,7 @@ bool Parser::Number(Symbol &num){
     if(tok.tt == T_INTEGER_CONST){
         num.type = TYPE_INT;
         num.tt = T_INTEGER_CONST;
+        // Code Gen: Integer
         num.llvmValue = llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, tok.val.intVal, true));
 
         return IsTokenType(T_INTEGER_CONST);
@@ -814,6 +828,7 @@ bool Parser::Number(Symbol &num){
     else if(tok.tt == T_FLOAT_CONST){
         num.type = TYPE_FLOAT;
         num.tt = T_FLOAT_CONST;
+        // Code Gen: Float
         num.llvmValue = llvm::ConstantFP::get(*llvmContext, llvm::APFloat(tok.val.floatVal));
 
         return IsTokenType(T_FLOAT_CONST);
@@ -828,6 +843,7 @@ bool Parser::String(Symbol &str){
         str.id = tok.val.stringVal;
         str.tt = tok.tt;
         str.type = TYPE_STRING;
+        // Code Gen: String
         str.llvmValue = llvmBuilder->CreateGlobalString(tok.val.stringVal);
     }
 
