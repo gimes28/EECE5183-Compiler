@@ -44,7 +44,7 @@ struct Symbol{
 
     std::vector<Symbol> params;
 
-    llvm::Value *llvmValues;
+    llvm::Value *llvmValue;
     llvm::Function *llvmFunction;
 };
 

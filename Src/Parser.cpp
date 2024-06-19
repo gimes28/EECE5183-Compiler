@@ -806,12 +806,14 @@ bool Parser::Number(Symbol &num){
     if(tok.tt == T_INTEGER_CONST){
         num.type = TYPE_INT;
         num.tt = T_INTEGER_CONST;
+        num.llvmValue = llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, tok.val.intVal, true));
 
         return IsTokenType(T_INTEGER_CONST);
     }
     else if(tok.tt == T_FLOAT_CONST){
         num.type = TYPE_FLOAT;
         num.tt = T_FLOAT_CONST;
+        num.llvmValue = llvm::ConstantFP::get(*llvmContext, llvm::APFloat(tok.val.floatVal));
 
         return IsTokenType(T_FLOAT_CONST);
     }
@@ -825,6 +827,7 @@ bool Parser::String(Symbol &str){
         str.id = tok.val.stringVal;
         str.tt = tok.tt;
         str.type = TYPE_STRING;
+        str.llvmValue = llvmBuilder->CreateGlobalString(tok.val.stringVal);
     }
 
     return IsTokenType(T_STRING_CONST);
