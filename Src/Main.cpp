@@ -38,13 +38,15 @@ int main(int argc, char* args[])
     if(!lexer.LoadFile(args[1])) 
         return 1;
 
-    bool parsed = parser.Parse();
-    bool codeGened = parser.OutputAssembly();
+    bool success = parser.Parse();
 
     if (debugToggle){
-        std::cout << std::endl << "Parsed: " << parsed << std::endl;
-        std::cout << std::endl << "Code Generated: " << codeGened << std::endl;
+        std::cout << std::endl << "Parsed: " << success << std::endl;
+        if(success){
+            success = parser.OutputAssembly();
+            std::cout << "Code Generated: " << success << std::endl;
+        }            
     }
 
-    return !(parsed && codeGened);
+    return !success;
 }

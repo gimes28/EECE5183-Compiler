@@ -31,6 +31,8 @@ Error::Error(){
     errorTable[ERROR_INVALID_IF] = "Invalid if statement";
     errorTable[ERROR_INVALID_LOOP] = "Invalid loop";
     errorTable[ERROR_INVALID_RETURN] = "Invalid return";
+    errorTable[ERROR_INVALID_PROCEDURE] = "Invalid procedure";
+    errorTable[ERROR_INVALID_VARIABLE] = "Invalid variable";
     errorTable[ERROR_MISSING_SEMICOLON] = "Missing semicolon";
     errorTable[ERROR_MISSING_COLON] = "Missing colon";
     errorTable[ERROR_MISSING_BRACKET] = "Missing bracket";

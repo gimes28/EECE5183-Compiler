@@ -759,6 +759,12 @@ bool Parser::Name(Symbol &id){
 
     id = scoper->GetSymbol(id.id);
 
+    //Confirm id is a name
+    if(id.st != ST_VARIABLE){
+        errTable.ReportError(ERROR_INVALID_VARIABLE, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\' is not a variable");
+        return false;
+    }
+
     if (!ArrayIndexAssist(id)){
         return false;
     }
@@ -884,7 +890,15 @@ bool Parser::ProcedureCallAssist(Symbol &id){
     id = scoper->GetSymbol(id.id);
 
     if(IsTokenType(T_LPAREN)){
+
+        //Confirm id is a procedure
+        if(id.st != ST_PROCEDURE){
+            errTable.ReportError(ERROR_INVALID_PROCEDURE, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\' is not a procedure and cannot be called");
+            return false;
+        }
+
         ArgumentList(id);
+
         if(listError)
             return false; 
 
@@ -895,6 +909,14 @@ bool Parser::ProcedureCallAssist(Symbol &id){
         return true;  
     }
     else{
+        // Name/Variable
+
+        //Confirm id is a name/variable
+        if(id.st != ST_VARIABLE){
+            errTable.ReportError(ERROR_INVALID_VARIABLE, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\' is not a variable");
+            return false;
+        }
+
         // Check array access
         if(!ArrayIndexAssist(id))
             return false;
