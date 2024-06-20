@@ -1,7 +1,7 @@
 #include "Error.h"
 
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 
 Error::Error(){
     errorTable[ERROR_INVALID_INPUT] = "Invalid input";
@@ -33,6 +33,7 @@ Error::Error(){
     errorTable[ERROR_INVALID_RETURN] = "Invalid return";
     errorTable[ERROR_INVALID_PROCEDURE] = "Invalid procedure";
     errorTable[ERROR_INVALID_VARIABLE] = "Invalid variable";
+    errorTable[ERROR_INVALID_DESTINATION] = "Invalid destination";
     errorTable[ERROR_MISSING_SEMICOLON] = "Missing semicolon";
     errorTable[ERROR_MISSING_COLON] = "Missing colon";
     errorTable[ERROR_MISSING_BRACKET] = "Missing bracket";

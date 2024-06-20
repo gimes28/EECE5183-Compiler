@@ -2,10 +2,9 @@
 #define PARSER_H
 
 #include "Lexer.h"
-#include "Token.h"
 #include "ScopeHandler.h"
 #include "Symbol.h"
-
+#include "Token.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/IRBuilder.h"
@@ -71,8 +70,7 @@ class Parser {
 
         llvm::LLVMContext *llvmContext;
         llvm::IRBuilder<> *llvmBuilder;   
-        llvm::Module *llvmModule;
-     
+        llvm::Module *llvmModule;     
 };
 
 #endif

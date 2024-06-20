@@ -1,12 +1,12 @@
 #ifndef LEXER_H
 #define LEXER_H
 
-#include <string>
-#include <fstream>
-#include <unordered_map>
-
 #include "ScopeHandler.h"
 #include "Token.h"
+
+#include <fstream>
+#include <string>
+#include <unordered_map>
 
 enum CharClass {
     NUM,

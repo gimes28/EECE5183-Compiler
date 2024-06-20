@@ -1,12 +1,12 @@
+#include "Error.h"
 #include "Lexer.h"
 #include "Parser.h"
 #include "Scope.h"
-#include "Token.h"
-#include "Error.h"
 #include "ScopeHandler.h"
+#include "Token.h"
 
-#include <iostream>
 #include <cstring>
+#include <iostream>
 
 int main(int argc, char* args[])
 {

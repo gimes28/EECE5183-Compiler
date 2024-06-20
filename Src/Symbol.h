@@ -2,7 +2,6 @@
 #define SYMBOL_H
 
 #include "Token.h"
-
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Value.h"
 

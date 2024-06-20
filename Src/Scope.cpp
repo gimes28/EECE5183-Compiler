@@ -1,5 +1,6 @@
 #include "Scope.h"
 #include "Symbol.h"
+
 #include <iostream>
 
 Scope::Scope(){

@@ -2,6 +2,7 @@
 #define SCOPE_H
 
 #include "Symbol.h"
+
 #include <string>
 #include <unordered_map>
 

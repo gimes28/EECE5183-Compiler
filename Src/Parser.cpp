@@ -1,6 +1,6 @@
+#include "Error.h"
 #include "Parser.h"
 #include "Lexer.h"
-#include "Error.h"
 #include "ScopeHandler.h"
 #include "Symbol.h"
 
@@ -440,6 +440,11 @@ bool Parser::Destination(Symbol &id){
 
     id = scoper->GetSymbol(id.id);
 
+    if(id.st != ST_VARIABLE){
+        errTable.ReportError(ERROR_INVALID_DESTINATION, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\' is not a valid destination");
+        return false;
+    }
+
     if(!ArrayIndexAssist(id))
         return false;
     return true; 
@@ -462,8 +467,10 @@ bool Parser::IfStatement(){
     // Check and convert to bool
     if(exp.type == TYPE_INT)
         exp.type = TYPE_BOOL;
-    else if (exp.type != TYPE_BOOL)
+    else if (exp.type != TYPE_BOOL){
         errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "If statement expression must evaluate to bool");
+        return false;
+    }
 
     if(!IsTokenType(T_RPAREN)){
         errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \')\' in if statement");
@@ -521,8 +528,10 @@ bool Parser::LoopStatement(){
     // Check and convert to bool
     if(exp.type == TYPE_INT)
         exp.type = TYPE_BOOL;
-    else if (exp.type != TYPE_BOOL)
+    else if (exp.type != TYPE_BOOL){
         errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber(), "Loop statement expression must evaluate to bool");
+        return false;
+    }
 
     if(!IsTokenType(T_RPAREN)){
         errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \')\' in loop");
@@ -582,8 +591,10 @@ bool Parser::Expression(Symbol &exp){
         return false;
 
     if(notToken){
-        if(exp.type != TYPE_BOOL && exp.type != TYPE_INT)
+        if(exp.type != TYPE_BOOL && exp.type != TYPE_INT){
             errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber(), "\'not\' operator only defined for int and bool");
+            return false;    
+        }
     }
 
     if(!ExpressionPrime(exp))
@@ -760,7 +771,7 @@ bool Parser::Name(Symbol &id){
     id = scoper->GetSymbol(id.id);
 
     //Confirm id is a name
-    if(id.st != ST_VARIABLE){
+    if (id.st != ST_VARIABLE){
         errTable.ReportError(ERROR_INVALID_VARIABLE, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\' is not a variable");
         return false;
     }
@@ -800,18 +811,6 @@ bool Parser::ArgumentList(Symbol &id){
         ind++;
 
     } while (IsTokenType(T_COMMA));
-
-    /*
-    while(IsTokenType(T_COMMA)){
-        exp = Symbol();
-        if(!Expression(exp)){
-            listError = true;
-            errTable.ReportError(ERROR_INVALID_ARGUMENT, lexer->GetFileName(), lexer->GetLineNumber());
-            return false;
-        }
-        // Check type match to param
-    }*/
-
 
     if(ind != id.params.size()){
         errTable.ReportError(ERROR_INVALID_ASSIGNMENT, lexer->GetFileName(), lexer->GetLineNumber(), "Too few arguments provided to \'" + id.id + "\'");
@@ -1096,7 +1095,5 @@ bool Parser::CompatibleTypeCheck(Symbol &dest, Symbol &exp){
         } 
     }
     // Both are not arrays
-
-
     return comp;
 }

@@ -1,10 +1,10 @@
-#include "Lexer.h"
-#include "Token.h"
 #include "Error.h"
+#include "Lexer.h"
 #include "ScopeHandler.h"
+#include "Token.h"
 
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <string>
 
 Error errTable;
