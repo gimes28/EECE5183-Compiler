@@ -440,6 +440,7 @@ bool Parser::Destination(Symbol &id){
 
     id = scoper->GetSymbol(id.id);
 
+    // Confirm id is a name
     if(id.st != ST_VARIABLE){
         errTable.ReportError(ERROR_INVALID_DESTINATION, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\' is not a valid destination");
         return false;
