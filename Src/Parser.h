@@ -63,7 +63,7 @@ class Parser {
         bool ProcedureCallAssist(Symbol &id);
         bool ArrayIndexAssist(Symbol &id);
 
-        bool ArithmeticTypeCheck(Symbol &lhs, Symbol &rhs);
+        bool ArithmeticTypeCheck(Symbol &lhs, Symbol &rhs, Token &op);
         bool RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &tok);
         bool ExpressionTypeCheck(Symbol &lhs, Symbol &rhs);
         bool CompatibleTypeCheck(Symbol &dest, Symbol &exp);

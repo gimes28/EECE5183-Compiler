@@ -5,6 +5,7 @@
 #include "Symbol.h"
 
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/IRPrintingPasses.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/MC/TargetRegistry.h"
@@ -95,8 +96,20 @@ bool Parser::OutputAssembly(){
         return false;
     }
 
+    std::string filename2 = "out.ll";
+    std::error_code errCode2;
+    llvm::raw_fd_ostream dest2(filename2, errCode2, llvm::sys::fs::OF_None);
+
+    if(errCode2){
+        llvm::errs() << "Could not open output file: " << errCode2.message();
+        return false;
+    }
+
+    pm.add(llvm::createPrintModulePass(dest2));
+
     pm.run(*llvmModule);
     dest.flush();
+    dest2.flush();
 
     return true;
 }
@@ -107,7 +120,6 @@ bool Parser::Parse(){
 }
 
 bool Parser::Program(){
-    //std::cout <<"Program" << //std::endl;
     //Global scope is defined in scopeHandler
     if (!ProgramHeader())
         return false;
@@ -126,7 +138,6 @@ bool Parser::Program(){
 }
 
 bool Parser::ProgramHeader(){
-    //std::cout <<"ProgramHeader" << //std::endl;
     if (!IsTokenType(T_PROGRAM))
         return false;
     Symbol id;
@@ -145,12 +156,10 @@ bool Parser::ProgramHeader(){
 }
 
 bool Parser::ProgramBody(){
-    //std::cout <<"ProgramBody" << //std::endl;
     if (!DeclarationAssist())
         return false;
 
     if (!IsTokenType(T_BEGIN)){
-        //std::cout <<"ProgramBody1" << //std::endl;
         errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'begin\' in program body");
         return false;
     }
@@ -185,22 +194,16 @@ bool Parser::ProgramBody(){
 }
 
 bool Parser::Declaration(){
-    //std::cout <<"Declaration" << //std::endl;
     Symbol decl;
     decl.isGlobal = IsTokenType(T_GLOBAL);
-    //std::cout <<"Decleration Started" << //std::endl;
-    if (ProcedureDeclaration(decl)) {
-        //std::cout <<"Proc Decleration Finished" << //std::endl;
-    } else if (VariableDeclaration(decl)) {
-        //std::cout <<"Var Decleration Finished" << //std::endl;
-    }
+    if (ProcedureDeclaration(decl)) {} 
+    else if (VariableDeclaration(decl)) {}
     else
         return false;
     return true;
 }
 
 bool Parser::ProcedureDeclaration(Symbol &decl){
-    //std::cout <<"ProcedureDeclaration" << //std::endl;
     if(!ProcedureHeader(decl))
         return false;
 
@@ -233,7 +236,6 @@ bool Parser::ProcedureDeclaration(Symbol &decl){
 }
 
 bool Parser::ProcedureHeader(Symbol &decl){
-    //std::cout <<"ProcedureHeader" << //std::endl;
     if(!IsTokenType(T_PROCEDURE))
         return false;
 
@@ -272,7 +274,6 @@ bool Parser::ProcedureHeader(Symbol &decl){
 }
 
 bool Parser::ParameterList(Symbol &decl){
-    //std::cout <<"ParameterList" << //std::endl;
     Symbol param;
     if(!Parameter(param))
         return false;
@@ -292,12 +293,10 @@ bool Parser::ParameterList(Symbol &decl){
 }
 
 bool Parser::Parameter(Symbol &param){
-    //std::cout <<"Parameter" << //std::endl;
     return VariableDeclaration(param);
 }
 
 bool Parser::ProcedureBody(){
-    //std::cout <<"ProcedureBody" << //std::endl;
     if (!DeclarationAssist())
         return false;
 
@@ -322,7 +321,6 @@ bool Parser::ProcedureBody(){
 }
 
 bool Parser::VariableDeclaration(Symbol &decl){
-    //std::cout << "VariableDeclaration" << //std::endl;
     if (!IsTokenType(T_VARIABLE))
         return false;
 
@@ -369,7 +367,6 @@ bool Parser::VariableDeclaration(Symbol &decl){
 }
 
 bool Parser::TypeMark(Symbol &id){
-    //std::cout << "TypeMark" << //std::endl;
     if (IsTokenType(T_INTEGER))
         id.type = TYPE_INT;
     else if (IsTokenType(T_FLOAT))
@@ -384,7 +381,6 @@ bool Parser::TypeMark(Symbol &id){
 }
 
 bool Parser::Bound(Symbol &id){
-    //std::cout << "Bound" << //std::endl;
     Symbol num;
 
     int val = tok.val.intVal;
@@ -400,7 +396,6 @@ bool Parser::Bound(Symbol &id){
 }
 
 bool Parser::Statement(){
-    //std::cout << "Statement" << //std::endl;
     if (AssignmentStatement()){}
     else if (IfStatement()){}
     else if (LoopStatement()){}
@@ -411,7 +406,6 @@ bool Parser::Statement(){
 }
 
 bool Parser::AssignmentStatement(){
-    //std::cout << "AssignmentStatement" << //std::endl;
     Symbol dest, exp;
     if(!Destination(dest))
         return false;
@@ -429,7 +423,6 @@ bool Parser::AssignmentStatement(){
 }
 
 bool Parser::Destination(Symbol &id){
-    //std::cout << "Destination" << //std::endl;
     if(!Identifier(id))
         return false;
     
@@ -452,7 +445,6 @@ bool Parser::Destination(Symbol &id){
 }
 
 bool Parser::IfStatement(){
-    //std::cout << "IfStatement" << //std::endl;
     if (!IsTokenType(T_IF))
         return false;
 
@@ -505,7 +497,6 @@ bool Parser::IfStatement(){
 }
 
 bool Parser::LoopStatement(){
-    //std::cout << "LoopStatement" << //std::endl;
     if(!IsTokenType(T_FOR))
         return false;
      
@@ -555,7 +546,6 @@ bool Parser::LoopStatement(){
 }
 
 bool Parser::ReturnStatement(){
-    //std::cout << "ReturnStatement" << //std::endl;
     if (!IsTokenType(T_RETURN))
         return false;
 
@@ -576,7 +566,6 @@ bool Parser::ReturnStatement(){
 }
 
 bool Parser::Identifier(Symbol &id){
-    //std::cout <<"Identifier" << //std::endl;
     if (tok.tt == T_IDENTIFIER){
         id.id = tok.val.stringVal;
         id.tt = tok.tt;
@@ -585,7 +574,6 @@ bool Parser::Identifier(Symbol &id){
 }
 
 bool Parser::Expression(Symbol &exp){
-    //std::cout << "Expression" << //std::endl;
     bool notToken = IsTokenType(T_NOT);
 
     if(!ArithOp(exp))
@@ -605,7 +593,6 @@ bool Parser::Expression(Symbol &exp){
 }
 
 bool Parser::ExpressionPrime(Symbol &exp){
-    //std::cout << "ExpressionPrime" << //std::endl;
     if (IsTokenType(T_AND) || IsTokenType(T_OR)){
         Symbol rhs;
         if(!ArithOp(rhs))
@@ -620,7 +607,6 @@ bool Parser::ExpressionPrime(Symbol &exp){
 }
 
 bool Parser::ArithOp(Symbol &aro){
-    //std::cout << "ArithOp" << //std::endl;
     if(!Relation(aro))
         return false;
 
@@ -631,13 +617,14 @@ bool Parser::ArithOp(Symbol &aro){
 }
 
 bool Parser::ArithOpPrime(Symbol &aro){
-    //std::cout << "ArithOpPrime" << //std::endl;
+    Token op = tok;
+
     if (IsTokenType(T_PLUS) || IsTokenType(T_MINUS)){
         Symbol rhs;
         if(!Relation(rhs))
             return false;
         
-        if(!ArithmeticTypeCheck(aro, rhs))
+        if(!ArithmeticTypeCheck(aro, rhs, op))
             return false;
 
         if(!ArithOpPrime(aro))
@@ -647,7 +634,6 @@ bool Parser::ArithOpPrime(Symbol &aro){
 }
 
 bool Parser::Relation(Symbol &rel){
-    //std::cout << "Relation" << //std::endl;
     if(!Term(rel))
         return false;
     
@@ -660,7 +646,6 @@ bool Parser::Relation(Symbol &rel){
 }
 
 bool Parser::RelationPrime(Symbol &rel){
-    //std::cout << "RelationPrime" << //std::endl;
     Token op = tok;
 
     if(IsTokenType(T_LESS) || IsTokenType(T_LESS_EQ) || 
@@ -684,7 +669,6 @@ bool Parser::RelationPrime(Symbol &rel){
 }
 
 bool Parser::Term(Symbol &trm){
-    //std::cout << "Term" << //std::endl;
     if(!Factor(trm))
         return false;
     
@@ -695,14 +679,15 @@ bool Parser::Term(Symbol &trm){
 }
 
 bool Parser::TermPrime(Symbol &trm){
-    //std::cout << "TermPrime" << //std::endl;
+    Token op = tok;
+
     if(IsTokenType(T_MULTIPLY) || IsTokenType(T_DIVIDE)){
         Symbol rhs;
         if(!Factor(rhs))
             return false;
         // Check and convert for *
 
-        if(!ArithmeticTypeCheck(trm, rhs))
+        if(!ArithmeticTypeCheck(trm, rhs, op))
             return false;
 
         if(!TermPrime(trm))
@@ -712,7 +697,6 @@ bool Parser::TermPrime(Symbol &trm){
 }
 
 bool Parser::Factor(Symbol &fac){
-    //std::cout << "Factor" << //std::endl;
     if(IsTokenType(T_LPAREN)){
         if(!Expression(fac))
             return false;
@@ -760,7 +744,6 @@ bool Parser::Factor(Symbol &fac){
 }
 
 bool Parser::Name(Symbol &id){
-    //std::cout << "Name" << //std::endl;
     if(!Identifier(id))
         return false;
         
@@ -784,7 +767,6 @@ bool Parser::Name(Symbol &id){
 }
 
 bool Parser::ArgumentList(Symbol &id){
-    //std::cout << "ArgumentList" << //std::endl;
     Symbol arg;
     int ind = 0;
 
@@ -821,8 +803,6 @@ bool Parser::ArgumentList(Symbol &id){
 }
 
 bool Parser::Number(Symbol &num){
-    //std::cout << "Number" << //std::endl;
-
     if(tok.tt == T_INTEGER_CONST){
         num.type = TYPE_INT;
         num.tt = T_INTEGER_CONST;
@@ -844,7 +824,6 @@ bool Parser::Number(Symbol &num){
 }
 
 bool Parser::String(Symbol &str){
-    //std::cout << "String" << //std::endl;
     if(tok.tt == T_STRING_CONST){
         str.id = tok.val.stringVal;
         str.tt = tok.tt;
@@ -878,7 +857,6 @@ bool Parser::StatementAssist(){
 
 
 bool Parser::ProcedureCallAssist(Symbol &id){
-    //std::cout << "ProcedureCallAssist" << //std::endl;
     if (!Identifier(id))
         return false;
 
@@ -953,21 +931,58 @@ bool Parser::ArrayIndexAssist(Symbol &id){
     return true;
 }
 
-bool Parser::ArithmeticTypeCheck(Symbol &lhs, Symbol &rhs){
+bool Parser::ArithmeticTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
     if((lhs.type != TYPE_INT && lhs.type != TYPE_FLOAT) || (rhs.type != TYPE_INT && rhs.type != TYPE_FLOAT)){
         errTable.ReportError(ERROR_INVALID_TYPE_CHECK, lexer->GetFileName(), lexer->GetLineNumber(), "Arithmetic only defined for int and float");
         return false;
     }
 
     if(lhs.type == TYPE_INT){
-        if(rhs.type == TYPE_FLOAT)
+        if(rhs.type == TYPE_FLOAT){
             // convert lhs to float 
             lhs.type = TYPE_FLOAT;
+            lhs.llvmValue = llvmBuilder->CreateSIToFP(lhs.llvmValue, llvmBuilder->getFloatTy());
+        }
+        // else both are ints
     }
     else{
-        if(rhs.type == TYPE_INT)
+        if(rhs.type == TYPE_INT){
             // convert rhs to float 
             rhs.type = TYPE_FLOAT;
+            rhs.llvmValue = llvmBuilder->CreateSIToFP(rhs.llvmValue, llvmBuilder->getFloatTy());
+        }
+        // else both are floats
+    }
+    
+    // Code gen: Arithmetic
+    switch(op.tt){
+        case (T_PLUS):
+            if(lhs.type == TYPE_INT)
+                lhs.llvmValue = llvmBuilder->CreateAdd(lhs.llvmValue, rhs.llvmValue);
+            else
+                lhs.llvmValue = llvmBuilder->CreateFAdd(lhs.llvmValue, rhs.llvmValue);
+            break;
+        case (T_MINUS):
+            if(lhs.type == TYPE_INT)
+                lhs.llvmValue = llvmBuilder->CreateSub(lhs.llvmValue, rhs.llvmValue);
+            else
+                lhs.llvmValue = llvmBuilder->CreateFSub(lhs.llvmValue, rhs.llvmValue);
+            break;
+        case (T_MULTIPLY):
+            if(lhs.type == TYPE_INT)
+                lhs.llvmValue = llvmBuilder->CreateMul(lhs.llvmValue, rhs.llvmValue);
+            else
+                lhs.llvmValue = llvmBuilder->CreateFMul(lhs.llvmValue, rhs.llvmValue);
+            break;
+        case (T_DIVIDE):
+            if(lhs.type == TYPE_INT)
+                lhs.llvmValue = llvmBuilder->CreateSDiv(lhs.llvmValue, rhs.llvmValue);
+            else
+                lhs.llvmValue = llvmBuilder->CreateFDiv(lhs.llvmValue, rhs.llvmValue);
+            break;
+        default:
+            errTable.ReportError(ERROR_INVALID_TYPE_CHECK, lexer->GetFileName(), lexer->GetLineNumber(), "Invalid arithmetic operation");
+            return false;
     }
     return true;
 }
