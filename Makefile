@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -Wall -g
+CFLAGS = -std=c++11 -g
 
 BUILDDIR = ../Build
 SRC = $(wildcard Src/*.cpp)
@@ -7,7 +7,7 @@ SRC = $(wildcard Src/*.cpp)
 LLVM = `llvm-config --cxxflags --ldflags --libs --system-libs`
 
 Main: $(SRC)
-	$(CC) $(SRC) -o Main $(LLVM)
+	$(CC) $(CFLAGS) $(SRC) -o Main $(LLVM)
 
 parsetest: Main
 	./testPgms/parsetest.sh
