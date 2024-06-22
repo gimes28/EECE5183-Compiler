@@ -2,6 +2,8 @@
 #include "Scope.h"
 #include "Symbol.h"
 
+#include <iostream>
+
 ScopeHandler::ScopeHandler() {
     global = new Scope();
     local = global;
@@ -72,6 +74,7 @@ void ScopeHandler::NewScope() {
 void ScopeHandler::ExitScope() {
     if (debugOption) {
         PrintScope(false);
+        std::cout << "Scope exited" << std::endl << std::endl;
     }
 
     if (local != nullptr && local != global) {

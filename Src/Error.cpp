@@ -66,3 +66,8 @@ void Error::ReportWarning(ErrorType war, std::string fileName, int lineNum){
     std::cout << fileName << ":" << std::left << std::setw(15);
     std::cout << lineNum << "   Warning: " << errorTable[war] << std::endl;
 }
+
+void Error::ReportDebug(std::string fileName, bool success, std::string message){
+    std::cout << fileName << ":" << std::left << std::setw(15);
+    std::cout << "   Debug status: " << success << " -> " << message << std::endl;
+}

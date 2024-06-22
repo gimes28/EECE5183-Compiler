@@ -1,6 +1,7 @@
 #include "Scope.h"
 #include "Symbol.h"
 
+#include <iomanip>
 #include <iostream>
 
 Scope::Scope(){
@@ -22,8 +23,9 @@ bool Scope::HasSymbol(std::string str){
 }
 
 void Scope::PrintSymbolTable(){
+    std::cout << std::endl << "Scope Symbols: " << std::endl << std::endl;
     for(SymbolTable::iterator it = table.begin(); it != table.end(); ++it){
-        std::cout << GetTokenTypeName(it->second.tt) << " ";
+        std::cout << std::left << std::setw(15) << GetTokenTypeName(it->second.tt);
         std::cout << it->second.id << std::endl;
     }
     std::cout << std::endl;

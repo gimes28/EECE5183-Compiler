@@ -39,8 +39,17 @@ bool Parser::IsTokenType(TokenType token){
     return false;
 }
 
-void Parser::SetDebugOption(bool debug){
-    debugOption = debug;
+void Parser::SetDebugOptionParser(bool debug){
+    debugOptionParser = debug;
+}
+
+void Parser::SetDebugOptionCodeGen(bool debug){
+    debugOptionCodeGen = debug;
+}
+
+void Parser::DebugParseTrace(std::string message){
+    if(debugOptionParser)
+        std::cout << "Parse: " << message << std::endl;
 }
 
 bool Parser::OutputAssembly(){
@@ -79,7 +88,7 @@ bool Parser::OutputAssembly(){
 
     llvmModule->setDataLayout(targetMachine->createDataLayout());
 
-    std::string filename = "out.o";
+    std::string filename = "out.s";
     std::error_code errCode;
     llvm::raw_fd_ostream dest(filename, errCode, llvm::sys::fs::OF_None);
 
@@ -96,27 +105,45 @@ bool Parser::OutputAssembly(){
         return false;
     }
 
-    std::string filename2 = "out.ll";
-    std::error_code errCode2;
-    llvm::raw_fd_ostream dest2(filename2, errCode2, llvm::sys::fs::OF_None);
+    if(debugOptionCodeGen){
+        // E
+        std::string filename2 = "out.ll";
+        std::error_code errCode2;
+        llvm::raw_fd_ostream dest2(filename2, errCode2, llvm::sys::fs::OF_None);
 
-    if(errCode2){
-        llvm::errs() << "Could not open output file: " << errCode2.message();
-        return false;
+        if(errCode2){
+            llvm::errs() << "Could not open output file: " << errCode2.message();
+            return false;
+        }
+
+        pm.add(llvm::createPrintModulePass(dest2));
+
+        pm.run(*llvmModule);
+        dest.flush();
+        dest2.flush();
+
+        errTable.ReportDebug(lexer->GetFileName(), true, "Codegen succeeded");
     }
-
-    pm.add(llvm::createPrintModulePass(dest2));
-
-    pm.run(*llvmModule);
-    dest.flush();
-    dest2.flush();
+    else{
+        pm.run(*llvmModule);
+        dest.flush();
+    }
 
     return true;
 }
 
 bool Parser::Parse(){
     tok = lexer->InitScan();
-    return Program();
+
+    bool success = Program();
+    if(debugOptionParser){
+        if(success)
+            errTable.ReportDebug(lexer->GetFileName(), success, "Parse succeeded");
+        else
+            errTable.ReportDebug(lexer->GetFileName(), success, "Parse failed");
+    }
+    
+    return success;
 }
 
 bool Parser::Program(){
@@ -138,6 +165,8 @@ bool Parser::Program(){
 }
 
 bool Parser::ProgramHeader(){
+    DebugParseTrace("Program Header");
+
     if (!IsTokenType(T_PROGRAM))
         return false;
     Symbol id;
@@ -156,6 +185,8 @@ bool Parser::ProgramHeader(){
 }
 
 bool Parser::ProgramBody(){
+    DebugParseTrace("Program Body");
+
     if (!DeclarationAssist())
         return false;
 
@@ -194,6 +225,8 @@ bool Parser::ProgramBody(){
 }
 
 bool Parser::Declaration(){
+    DebugParseTrace("Declaration");
+
     Symbol decl;
     decl.isGlobal = IsTokenType(T_GLOBAL);
     if (ProcedureDeclaration(decl)) {} 
@@ -204,6 +237,8 @@ bool Parser::Declaration(){
 }
 
 bool Parser::ProcedureDeclaration(Symbol &decl){
+    DebugParseTrace("Procedure Declaration");
+
     if(!ProcedureHeader(decl))
         return false;
 
@@ -236,6 +271,7 @@ bool Parser::ProcedureDeclaration(Symbol &decl){
 }
 
 bool Parser::ProcedureHeader(Symbol &decl){
+    DebugParseTrace("Procedure Header");
     if(!IsTokenType(T_PROCEDURE))
         return false;
 
@@ -274,6 +310,8 @@ bool Parser::ProcedureHeader(Symbol &decl){
 }
 
 bool Parser::ParameterList(Symbol &decl){
+    DebugParseTrace("Parameter List");
+
     Symbol param;
     if(!Parameter(param))
         return false;
@@ -293,10 +331,14 @@ bool Parser::ParameterList(Symbol &decl){
 }
 
 bool Parser::Parameter(Symbol &param){
+    DebugParseTrace("Parameter");
+
     return VariableDeclaration(param);
 }
 
 bool Parser::ProcedureBody(){
+    DebugParseTrace("Procedure Body");
+
     if (!DeclarationAssist())
         return false;
 
@@ -321,6 +363,8 @@ bool Parser::ProcedureBody(){
 }
 
 bool Parser::VariableDeclaration(Symbol &decl){
+    DebugParseTrace("Variable Declaration");
+
     if (!IsTokenType(T_VARIABLE))
         return false;
 
@@ -367,6 +411,8 @@ bool Parser::VariableDeclaration(Symbol &decl){
 }
 
 bool Parser::TypeMark(Symbol &id){
+    DebugParseTrace("Type Mark");
+
     if (IsTokenType(T_INTEGER))
         id.type = TYPE_INT;
     else if (IsTokenType(T_FLOAT))
@@ -381,6 +427,8 @@ bool Parser::TypeMark(Symbol &id){
 }
 
 bool Parser::Bound(Symbol &id){
+    DebugParseTrace("Bound");
+
     Symbol num;
 
     int val = tok.val.intVal;
@@ -396,6 +444,8 @@ bool Parser::Bound(Symbol &id){
 }
 
 bool Parser::Statement(){
+    DebugParseTrace("Statement");
+
     if (AssignmentStatement()){}
     else if (IfStatement()){}
     else if (LoopStatement()){}
@@ -406,6 +456,8 @@ bool Parser::Statement(){
 }
 
 bool Parser::AssignmentStatement(){
+    DebugParseTrace("Assignment Statement");
+
     Symbol dest, exp;
     if(!Destination(dest))
         return false;
@@ -423,6 +475,8 @@ bool Parser::AssignmentStatement(){
 }
 
 bool Parser::Destination(Symbol &id){
+    DebugParseTrace("Destination");
+
     if(!Identifier(id))
         return false;
     
@@ -445,6 +499,8 @@ bool Parser::Destination(Symbol &id){
 }
 
 bool Parser::IfStatement(){
+    DebugParseTrace("If");
+
     if (!IsTokenType(T_IF))
         return false;
 
@@ -497,6 +553,8 @@ bool Parser::IfStatement(){
 }
 
 bool Parser::LoopStatement(){
+    DebugParseTrace("Loop");
+
     if(!IsTokenType(T_FOR))
         return false;
      
@@ -546,6 +604,8 @@ bool Parser::LoopStatement(){
 }
 
 bool Parser::ReturnStatement(){
+    DebugParseTrace("Return");
+
     if (!IsTokenType(T_RETURN))
         return false;
 
@@ -566,6 +626,8 @@ bool Parser::ReturnStatement(){
 }
 
 bool Parser::Identifier(Symbol &id){
+    DebugParseTrace("Identifier");
+
     if (tok.tt == T_IDENTIFIER){
         id.id = tok.val.stringVal;
         id.tt = tok.tt;
@@ -574,6 +636,8 @@ bool Parser::Identifier(Symbol &id){
 }
 
 bool Parser::Expression(Symbol &exp){
+    DebugParseTrace("Expression");
+
     bool notToken = IsTokenType(T_NOT);
 
     if(!ArithOp(exp))
@@ -593,6 +657,8 @@ bool Parser::Expression(Symbol &exp){
 }
 
 bool Parser::ExpressionPrime(Symbol &exp){
+    DebugParseTrace("Expression Prime");
+
     if (IsTokenType(T_AND) || IsTokenType(T_OR)){
         Symbol rhs;
         if(!ArithOp(rhs))
@@ -607,6 +673,8 @@ bool Parser::ExpressionPrime(Symbol &exp){
 }
 
 bool Parser::ArithOp(Symbol &aro){
+    DebugParseTrace("Arithmetic Op");
+
     if(!Relation(aro))
         return false;
 
@@ -617,6 +685,8 @@ bool Parser::ArithOp(Symbol &aro){
 }
 
 bool Parser::ArithOpPrime(Symbol &aro){
+    DebugParseTrace("Arithmetic Op Prime");
+
     Token op = tok;
 
     if (IsTokenType(T_PLUS) || IsTokenType(T_MINUS)){
@@ -634,6 +704,8 @@ bool Parser::ArithOpPrime(Symbol &aro){
 }
 
 bool Parser::Relation(Symbol &rel){
+    DebugParseTrace("Relation");
+
     if(!Term(rel))
         return false;
     
@@ -646,6 +718,8 @@ bool Parser::Relation(Symbol &rel){
 }
 
 bool Parser::RelationPrime(Symbol &rel){
+    DebugParseTrace("Relation Prime");
+
     Token op = tok;
 
     if(IsTokenType(T_LESS) || IsTokenType(T_LESS_EQ) || 
@@ -669,6 +743,8 @@ bool Parser::RelationPrime(Symbol &rel){
 }
 
 bool Parser::Term(Symbol &trm){
+    DebugParseTrace("Term");
+
     if(!Factor(trm))
         return false;
     
@@ -679,6 +755,8 @@ bool Parser::Term(Symbol &trm){
 }
 
 bool Parser::TermPrime(Symbol &trm){
+    DebugParseTrace("Term Prime");
+
     Token op = tok;
 
     if(IsTokenType(T_MULTIPLY) || IsTokenType(T_DIVIDE)){
@@ -697,6 +775,8 @@ bool Parser::TermPrime(Symbol &trm){
 }
 
 bool Parser::Factor(Symbol &fac){
+    DebugParseTrace("Factor");
+
     if(IsTokenType(T_LPAREN)){
         if(!Expression(fac))
             return false;
@@ -744,6 +824,8 @@ bool Parser::Factor(Symbol &fac){
 }
 
 bool Parser::Name(Symbol &id){
+    DebugParseTrace("Name");
+
     if(!Identifier(id))
         return false;
         
@@ -767,6 +849,8 @@ bool Parser::Name(Symbol &id){
 }
 
 bool Parser::ArgumentList(Symbol &id){
+    DebugParseTrace("Argument List");
+
     Symbol arg;
     int ind = 0;
 
@@ -803,6 +887,8 @@ bool Parser::ArgumentList(Symbol &id){
 }
 
 bool Parser::Number(Symbol &num){
+    DebugParseTrace("Number");
+
     if(tok.tt == T_INTEGER_CONST){
         num.type = TYPE_INT;
         num.tt = T_INTEGER_CONST;
@@ -824,6 +910,8 @@ bool Parser::Number(Symbol &num){
 }
 
 bool Parser::String(Symbol &str){
+    DebugParseTrace("String");
+
     if(tok.tt == T_STRING_CONST){
         str.id = tok.val.stringVal;
         str.tt = tok.tt;
@@ -857,6 +945,7 @@ bool Parser::StatementAssist(){
 
 
 bool Parser::ProcedureCallAssist(Symbol &id){
+    DebugParseTrace("Procedure Call or Name");
     if (!Identifier(id))
         return false;
 
@@ -868,6 +957,7 @@ bool Parser::ProcedureCallAssist(Symbol &id){
     id = scoper->GetSymbol(id.id);
 
     if(IsTokenType(T_LPAREN)){
+        DebugParseTrace("Procedure Call");
 
         //Confirm id is a procedure
         if(id.st != ST_PROCEDURE){
@@ -887,7 +977,7 @@ bool Parser::ProcedureCallAssist(Symbol &id){
         return true;  
     }
     else{
-        // Name/Variable
+        DebugParseTrace("Name");
 
         //Confirm id is a name/variable
         if(id.st != ST_VARIABLE){
@@ -904,6 +994,7 @@ bool Parser::ProcedureCallAssist(Symbol &id){
 
 // Handle array index access
 bool Parser::ArrayIndexAssist(Symbol &id){
+    DebugParseTrace("Index");
     if (IsTokenType(T_LBRACKET)){
         Symbol exp;
         if(!Expression(exp))

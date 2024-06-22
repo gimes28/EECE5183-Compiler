@@ -134,7 +134,7 @@ bool Lexer::GetDebugOption(){
 void Lexer::Debug(Token tok){
     if(debugOption){
         std::cout << "Token: " << std::left;
-        std::cout << std::setw(20) << GetTokenTypeName(tok.tt);
+        std::cout << std::setw(15) << GetTokenTypeName(tok.tt);
         switch(tok.tt) {
         case(T_INTEGER_CONST):
             std::cout << tok.val.intVal << std::endl;

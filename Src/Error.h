@@ -66,6 +66,8 @@ class Error{
         void ReportError(ErrorType err);
         
         void ReportWarning(ErrorType err, std::string fileName, int lineNum);  
+
+        void ReportDebug(std::string fileName, bool success, std::string message);  
     private:
         ErrorMap errorTable;
 };

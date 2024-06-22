@@ -13,7 +13,9 @@ class Parser {
     public:
         Parser(Lexer* lexerPtr, ScopeHandler* scoperPtr);
         ~Parser();
-        void SetDebugOption(bool debug);
+        void SetDebugOptionParser(bool debug);
+        void SetDebugOptionCodeGen(bool debug);
+        void DebugParseTrace(std::string message);
         bool Parse();
 
         bool OutputAssembly();
@@ -21,7 +23,8 @@ class Parser {
         Token tok;
         Lexer* lexer;
         ScopeHandler* scoper;
-        bool debugOption = false;
+        bool debugOptionParser = false;
+        bool debugOptionCodeGen = false;
         bool listError = false;
 
         bool IsTokenType(TokenType tok);
