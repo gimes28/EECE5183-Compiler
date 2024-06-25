@@ -68,8 +68,11 @@ class Parser {
 
         bool ArithmeticTypeCheck(Symbol &lhs, Symbol &rhs, Token &op);
         bool RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &tok);
-        bool ExpressionTypeCheck(Symbol &lhs, Symbol &rhs);
+        bool ExpressionTypeCheck(Symbol &lhs, Symbol &rhs, Token &op);
         bool CompatibleTypeCheck(Symbol &dest, Symbol &exp);
+
+        llvm::Value* StringCompare(Symbol& lhs, Symbol& rhs);
+        llvm::Type* GetLLVMType(Type t);
 
         llvm::LLVMContext *llvmContext;
         llvm::IRBuilder<> *llvmBuilder;   

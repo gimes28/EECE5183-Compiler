@@ -129,3 +129,15 @@ void ScopeHandler::PrintScope(bool glob) {
     else
         local->PrintSymbolTable();
 }
+
+SymbolTable::iterator ScopeHandler::GetScopeBegin(bool glob){
+    if (glob)
+        return global->begin();
+    return local->begin();
+}
+
+SymbolTable::iterator ScopeHandler::GetScopeEnd(bool glob){
+    if (glob)
+        return global->end();
+    return local->end();
+}

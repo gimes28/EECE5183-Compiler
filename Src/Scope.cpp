@@ -30,3 +30,11 @@ void Scope::PrintSymbolTable(){
     }
     std::cout << std::endl;
 }
+
+SymbolTable::iterator Scope::begin(){
+    return table.begin();
+}
+
+SymbolTable::iterator Scope::end(){
+    return table.end();
+}

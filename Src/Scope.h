@@ -16,6 +16,8 @@ class Scope {
         bool HasSymbol(std::string str);
         void PrintSymbolTable();
         Scope* prevScope;
+        SymbolTable::iterator begin();
+        SymbolTable::iterator end();
     private:
         SymbolTable table;
 };

@@ -45,6 +45,7 @@ struct Symbol{
 
     llvm::Value *llvmValue;
     llvm::Function *llvmFunction;
+    llvm::Value *llvmAddress;
 };
 
 std::string GetTypeName(Type typ);

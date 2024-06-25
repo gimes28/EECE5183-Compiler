@@ -16,6 +16,10 @@ class ScopeHandler{
         Symbol GetSymbol(std::string str);
         bool HasSymbol(std::string str, bool glob);
         bool HasSymbol(std::string str);
+
+        SymbolTable::iterator GetScopeBegin(bool glob = false);
+        SymbolTable::iterator GetScopeEnd(bool glob = false);
+
         void SetCurrentProcedure(Symbol proc);
         Symbol GetCurrentProcedure();
         void PrintScope(bool glob);

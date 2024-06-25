@@ -35,6 +35,7 @@ Error::Error(){
     errorTable[ERROR_INVALID_VARIABLE] = "Invalid variable";
     errorTable[ERROR_INVALID_DESTINATION] = "Invalid destination";
     errorTable[ERROR_INVALID_OPERATION] = "Invalid operation"; 
+    errorTable[ERROR_INVALID_TYPE] = "Invalid type";
     errorTable[ERROR_MISSING_SEMICOLON] = "Missing semicolon";
     errorTable[ERROR_MISSING_COLON] = "Missing colon";
     errorTable[ERROR_MISSING_BRACKET] = "Missing bracket";

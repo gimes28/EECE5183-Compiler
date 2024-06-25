@@ -1,0 +1,26 @@
+Program TestProgram is
+
+Variable num : integer;
+variable num2: float;
+variable b : bool;
+
+procedure test : integer()
+    variable x : integer;
+    global variable y : float;
+    begin
+    x := 1;
+    if(true) then x := 1 + 1;
+    else x:= 1 + 5;
+    end if;
+    return x;
+end procedure;
+
+begin
+
+num := 100;
+if(10 > 1) then
+    num := 1000;
+end if;
+num := 5 + 3;
+
+end program.

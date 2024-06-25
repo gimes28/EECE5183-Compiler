@@ -16,6 +16,7 @@
 #include "llvm/Target/TargetMachine.h"
 
 #include <iostream>
+#include <vector>
 
 Parser::Parser(Lexer* lexerptr, ScopeHandler* scoperPtr){
     lexer = lexerptr;
@@ -57,6 +58,8 @@ bool Parser::OutputAssembly(){
     bool errMod = llvm::verifyModule(*llvmModule, &llvm::errs());
     if (errMod){
         errTable.ReportError(ERROR_LLVM_INVALID_MODULE, lexer->GetFileName(), lexer->GetLineNumber());
+        if(debugOptionCodeGen)
+            llvmModule->print(llvm::outs(), nullptr);
         return false;
     }  
 
@@ -106,7 +109,6 @@ bool Parser::OutputAssembly(){
     }
 
     if(debugOptionCodeGen){
-        // E
         std::string filename2 = "out.ll";
         std::error_code errCode2;
         llvm::raw_fd_ostream dest2(filename2, errCode2, llvm::sys::fs::OF_None);
@@ -142,7 +144,7 @@ bool Parser::Parse(){
         else
             errTable.ReportDebug(lexer->GetFileName(), success, "Parse failed");
     }
-    
+
     return success;
 }
 
@@ -150,6 +152,15 @@ bool Parser::Program(){
     //Global scope is defined in scopeHandler
     if (!ProgramHeader())
         return false;
+
+    // Code gen: main function 
+    std::vector<llvm::Type*> params;
+    llvm::FunctionType *funcType = llvm::FunctionType::get(llvmBuilder->getInt32Ty(), params, false);
+    llvm::Function *func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "main", *llvmModule);
+
+    Symbol sym(T_IDENTIFIER, "main", ST_PROCEDURE, TYPE_INT);
+    sym.llvmFunction = func;
+    scoper->SetCurrentProcedure(sym);
 
     if (!ProgramBody())
         return false;
@@ -195,14 +206,27 @@ bool Parser::ProgramBody(){
         return false;
     }
 
-    // Code gen: main function 
-    std::vector<llvm::Type*> params;
-    llvm::FunctionType *funcType = llvm::FunctionType::get(llvmBuilder->getInt32Ty(), params, false);
-    llvm::Function *func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "main", *llvmModule);
+    llvm::Function *func = scoper->GetCurrentProcedure().llvmFunction;
 
     // Code gen: main entry point 
     llvm::BasicBlock *entry = llvm::BasicBlock::Create(*llvmContext, "entry", func);
     llvmBuilder->SetInsertPoint(entry);
+
+    // Code gen: Declared variables
+    for(SymbolTable::iterator it = scoper->GetScopeBegin(); it != scoper->GetScopeEnd(); it++){
+        if (it->second.st != ST_VARIABLE)
+            continue;
+
+        llvm::Type *t = GetLLVMType(it->second.type);
+
+        //Outerscope == global
+        llvm::Constant *val = llvm::Constant::getNullValue(t);        
+        llvm::Value *addr = new llvm::GlobalVariable(*llvmModule, t, false, llvm::GlobalValue::CommonLinkage, val, it->second.id);
+
+        // Todo Arrays
+
+        it->second.llvmAddress = addr;
+    }
 
     if (!StatementAssist())
         return false;
@@ -249,6 +273,20 @@ bool Parser::ProcedureDeclaration(Symbol &decl){
         return false;
     }
 
+    // Code gen: function 
+    std::vector<llvm::Type*> params;
+    for (auto &parm : decl.params){
+        params.push_back(GetLLVMType(parm.type));
+    }
+    llvm::FunctionType *funcType = llvm::FunctionType::get(GetLLVMType(decl.type), params, false);
+    llvm::Function *func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, decl.id, *llvmModule);
+
+    int i = 0;
+    for (auto &parm : func->args()){
+        parm.setName(decl.params[i++].id);
+    }
+    decl.llvmFunction = func;
+
     scoper->SetSymbol(decl.id, decl, decl.isGlobal);
 
     // Set inside function so procedure symbol can be easily found for return type checking
@@ -264,8 +302,8 @@ bool Parser::ProcedureDeclaration(Symbol &decl){
             errTable.ReportError(ERROR_DUPLICATE_PROCEDURE, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + decl.id + "\'");
             return false;
         }
+        scoper->SetSymbol(decl.id, decl, decl.isGlobal);
     }
-    scoper->SetSymbol(decl.id, decl, decl.isGlobal);
 
     return true;
 }
@@ -347,6 +385,25 @@ bool Parser::ProcedureBody(){
         return false;
     }
 
+    llvm::Function *func = scoper->GetCurrentProcedure().llvmFunction;
+
+    // Code gen: main entry point 
+    llvm::BasicBlock *entry = llvm::BasicBlock::Create(*llvmContext, "entry", func);
+    llvmBuilder->SetInsertPoint(entry);
+
+    // Code gen: Parms and declared variables
+    for(SymbolTable::iterator it = scoper->GetScopeBegin(); it != scoper->GetScopeEnd(); it++){
+        if (it->second.st != ST_VARIABLE)
+            continue;
+
+        llvm::Type *t = GetLLVMType(it->second.type);       
+        llvm::Value *addr = llvmBuilder->CreateAlloca(t, nullptr, it->second.id);
+
+        // Todo Arrays
+
+        it->second.llvmAddress = addr;
+    }
+
     if (!StatementAssist())
         return false;
     
@@ -359,6 +416,11 @@ bool Parser::ProcedureBody(){
         errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'procedure\' in procedure body");
         return false;
     }
+
+    // Code gen: end function
+    llvm::Value* retVal = llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 0, true));
+    llvmBuilder->CreateRet(retVal);
+
     return true;
 }
 
@@ -645,8 +707,11 @@ bool Parser::Expression(Symbol &exp){
 
     if(notToken){
         if(exp.type != TYPE_BOOL && exp.type != TYPE_INT){
+            exp.llvmValue = llvmBuilder->CreateNot(exp.llvmValue);
+        }
+        else{
             errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber(), "\'not\' operator only defined for int and bool");
-            return false;    
+            return false;
         }
     }
 
@@ -659,12 +724,13 @@ bool Parser::Expression(Symbol &exp){
 bool Parser::ExpressionPrime(Symbol &exp){
     DebugParseTrace("Expression Prime");
 
+    Token op = tok;
     if (IsTokenType(T_AND) || IsTokenType(T_OR)){
         Symbol rhs;
         if(!ArithOp(rhs))
             return false;
         
-        ExpressionTypeCheck(exp, rhs);
+        ExpressionTypeCheck(exp, rhs, op);
 
         if(!ExpressionPrime(exp))
             return false;
@@ -1078,7 +1144,7 @@ bool Parser::ArithmeticTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
     return true;
 }
 
-bool Parser::RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &tok){
+bool Parser::RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
     // if int is present with float or bool, convert int to respective type
 
     bool comp = false;
@@ -1087,10 +1153,14 @@ bool Parser::RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &tok){
         if(rhs.type == TYPE_BOOL) {
             comp = true;
             lhs.type = TYPE_BOOL;
+            // Convert lhs to bool, all non zeros are true
+            lhs.llvmValue = llvmBuilder->CreateICmpNE(lhs.llvmValue, llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 0, true)));
         }
         else if(rhs.type == TYPE_FLOAT) {
             comp = true;
             lhs.type = TYPE_FLOAT;
+            // Convert lhs to float
+            lhs.llvmValue = llvmBuilder->CreateSIToFP(lhs.llvmValue, llvmBuilder->getFloatTy());
         }
         else if (rhs.type == TYPE_INT)
             comp = true;
@@ -1101,6 +1171,8 @@ bool Parser::RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &tok){
         else if(rhs.type == TYPE_INT) {
             comp = true;
             rhs.type = TYPE_FLOAT;
+            // Convert rhs to float
+            rhs.llvmValue = llvmBuilder->CreateSIToFP(rhs.llvmValue, llvmBuilder->getFloatTy());
         }
     }
     else if(lhs.type == TYPE_BOOL) {
@@ -1109,20 +1181,77 @@ bool Parser::RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &tok){
         else if(rhs.type == TYPE_INT) {
             comp = true;
             rhs.type = TYPE_BOOL;
+            // Convert rhs to bool, all non zeros are true
+            rhs.llvmValue = llvmBuilder->CreateICmpNE(rhs.llvmValue, llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 0, true)));
         }
     }
     else if(lhs.type == TYPE_STRING) {
-        if(rhs.type == TYPE_STRING && (tok.tt == T_EQUAL || tok.tt == T_NOT_EQUAL))
+        if(rhs.type == TYPE_STRING && (op.tt == T_EQUAL || op.tt == T_NOT_EQUAL))
             comp = true;
     }
 
     if(!comp)
         errTable.ReportError(ERROR_INVALID_RELATION, lexer->GetFileName(), lexer->GetLineNumber());
+        
+    // Code gen: Relation
+    switch(op.tt){
+        case (T_LESS):
+            if(lhs.type == TYPE_INT)
+                lhs.llvmValue = llvmBuilder->CreateICmpSLT(lhs.llvmValue, rhs.llvmValue);
+            else if(lhs.type == TYPE_BOOL)
+                lhs.llvmValue = llvmBuilder->CreateICmpULT(lhs.llvmValue, rhs.llvmValue);
+            else   // float
+                lhs.llvmValue = llvmBuilder->CreateFCmpOLT(lhs.llvmValue, rhs.llvmValue);
+            break;
+        case (T_LESS_EQ):
+            if(lhs.type == TYPE_INT)
+                lhs.llvmValue = llvmBuilder->CreateICmpSLE(lhs.llvmValue, rhs.llvmValue);
+            else if(lhs.type == TYPE_BOOL)
+                lhs.llvmValue = llvmBuilder->CreateICmpULE(lhs.llvmValue, rhs.llvmValue);
+            else   // float
+                lhs.llvmValue = llvmBuilder->CreateFCmpOLE(lhs.llvmValue, rhs.llvmValue);
+            break;
+        case (T_GREATER):
+            if(lhs.type == TYPE_INT)
+                lhs.llvmValue = llvmBuilder->CreateICmpSGT(lhs.llvmValue, rhs.llvmValue);
+            else if(lhs.type == TYPE_BOOL)
+                lhs.llvmValue = llvmBuilder->CreateICmpUGT(lhs.llvmValue, rhs.llvmValue);
+            else   // float
+                lhs.llvmValue = llvmBuilder->CreateFCmpOGT(lhs.llvmValue, rhs.llvmValue);
+            break;
+        case (T_GREATER_EQ):
+            if(lhs.type == TYPE_INT)
+                lhs.llvmValue = llvmBuilder->CreateICmpSGE(lhs.llvmValue, rhs.llvmValue);
+            else if(lhs.type == TYPE_BOOL)
+                lhs.llvmValue = llvmBuilder->CreateICmpUGE(lhs.llvmValue, rhs.llvmValue);
+            else   // float
+                lhs.llvmValue = llvmBuilder->CreateFCmpOGE(lhs.llvmValue, rhs.llvmValue);
+            break;
+        case (T_EQUAL):
+            if(lhs.type == TYPE_INT || lhs.type == TYPE_BOOL)
+                lhs.llvmValue = llvmBuilder->CreateICmpEQ(lhs.llvmValue, rhs.llvmValue);
+            else if(lhs.type == TYPE_STRING){}
+                //lhs.llvmValue = StringCompare(lhs, rhs);
+            else   // float
+                lhs.llvmValue = llvmBuilder->CreateFCmpOEQ(lhs.llvmValue, rhs.llvmValue);
+            break;
+        case (T_NOT_EQUAL):
+            if(lhs.type == TYPE_INT || lhs.type == TYPE_BOOL)
+                lhs.llvmValue = llvmBuilder->CreateICmpNE(lhs.llvmValue, rhs.llvmValue);
+            else if(lhs.type == TYPE_STRING){}
+                //lhs.llvmValue = llvmBuilder->CreateNot(StringCompare(lhs, rhs));
+            else   // float
+                lhs.llvmValue = llvmBuilder->CreateFCmpONE(lhs.llvmValue, rhs.llvmValue);
+            break;
+        default:
+            errTable.ReportError(ERROR_INVALID_RELATION, lexer->GetFileName(), lexer->GetLineNumber());
+            return false;
+    }
     
     return comp;
 }
 
-bool Parser::ExpressionTypeCheck(Symbol &lhs, Symbol &rhs){
+bool Parser::ExpressionTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
     bool comp = false;
 
     if(lhs.type == TYPE_BOOL && rhs.type == TYPE_BOOL)
@@ -1132,6 +1261,18 @@ bool Parser::ExpressionTypeCheck(Symbol &lhs, Symbol &rhs){
     
     if(!comp)
         errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber(), "Expression operations only defined for int and bool");
+
+    switch(op.tt){
+        case T_AND:
+            lhs.llvmValue = llvmBuilder->CreateAnd(lhs.llvmValue, rhs.llvmValue);
+            break;
+        case T_OR:
+            lhs.llvmValue = llvmBuilder->CreateOr(lhs.llvmValue, rhs.llvmValue);
+            break;
+        default:
+            errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber());
+            return false;
+    }
     
     return comp;
 }
@@ -1204,3 +1345,65 @@ bool Parser::CompatibleTypeCheck(Symbol &dest, Symbol &exp){
     // Both are not arrays
     return comp;
 }
+
+llvm::Type* Parser::GetLLVMType(Type t){
+    switch(t){
+        case TYPE_INT:
+            return llvmBuilder->getInt32Ty();
+        case TYPE_FLOAT:
+            return llvmBuilder->getFloatTy();
+        case TYPE_BOOL:
+            return llvmBuilder->getInt1Ty();
+        case TYPE_STRING:
+            return llvmBuilder->getInt8PtrTy();
+        default:
+            errTable.ReportError(ERROR_INVALID_TYPE, lexer->GetFileName(), lexer->GetLineNumber());
+            return nullptr;
+    }
+}
+
+/*
+llvm::Value* Parser::StringCompare(Symbol& lhs, Symbol& rhs){
+    llvm::Function *func = scoper->GetCurrentProcedure().llvmFunction;
+    llvm::BasicBlock *strCompEntry = llvm::BasicBlock::Create(*llvmContext, "StrComp", func);
+    llvm::BasicBlock *strCompEntryMerge = llvm::BasicBlock::Create(*llvmContext, "StrCompMerge", func);
+
+    // Set initial value index to 0
+    llvm::Value* indAddr = llvmBuilder->CreateAlloca(llvmBuilder->getInt32Ty(), nullptr, "strCompInd");
+    llvm::Value* ind = llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 0, true));
+    llvmBuilder->CreateStore(ind, indAddr);
+
+    llvmBuilder->CreateBr(strCompEntry);
+    llvmBuilder->SetInsertPoint(strCompEntry);
+
+    ind = llvmBuilder->CreateLoad(llvmBuilder->getInt32Ty(), indAddr);
+    //llvm::Value* arr[2] = {llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 0, true)), ind};
+
+    // Get pointer to string, then load character
+    llvm::Value* lhsAddr = llvmBuilder->CreateInBoundsGEP(llvmBuilder->getInt32Ty(), lhs.llvmValue, ind);
+    llvm::Value* rhsAddr = llvmBuilder->CreateInBoundsGEP(llvmBuilder->getInt32Ty(), rhs.llvmValue, ind);
+
+    llvm::Value* lhsVal = llvmBuilder->CreateLoad(llvmBuilder->getInt8Ty(), lhsAddr);
+    llvm::Value* rhsVal = llvmBuilder->CreateLoad(llvmBuilder->getInt8Ty(), rhsAddr);
+
+    llvm::Value* comp = llvmBuilder->CreateICmpEQ(lhsVal, rhsVal);
+
+    // Create terminating /0 value
+    llvm::Value* termVal = llvm::ConstantInt::get(*llvmContext, llvm::APInt(8, 0, true));
+
+    // Check for /0 terminator in 1 string, if not equal then we can return
+    llvm::Value* notEndTerm = llvmBuilder->CreateICmpNE(lhsVal, termVal);
+
+    // Increment ind
+    llvm::Value *i = llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 1, true));
+    ind = llvmBuilder->CreateAdd(ind, i);
+    llvmBuilder->CreateStore(ind, indAddr);
+
+    // Continue checking if not end and if lhs == rhs
+    llvm::Value* cond = llvmBuilder->CreateAnd(comp, notEndTerm);
+    llvmBuilder->CreateCondBr(cond, strCompEntry, strCompEntryMerge);
+    llvmBuilder->SetInsertPoint(strCompEntryMerge);
+
+    return comp;
+}
+*/
