@@ -8,6 +8,7 @@ Error::Error(){
     errorTable[ERROR_FAIL_TO_OPEN] = "Failed to open";
     errorTable[ERROR_EOF] = "End of file";
     errorTable[ERROR_LLVM_INVALID_MODULE] = "Errors in LLVM Module";
+    errorTable[ERROR_LLVM_INVALID_FUNCTION] = "Errors in LLVM Function";
     errorTable[ERROR_INVALID_HEADER] = "Invalid header";
     errorTable[ERROR_INVALID_BODY] = "Invalid body";
     errorTable[ERROR_INVALID_DECLARATION] = "Invalid declaration";
@@ -45,8 +46,6 @@ Error::Error(){
     errorTable[ERROR_MISSING_ASSIGNMENT] = "Missing assignment";
     errorTable[ERROR_MISSING_IDENTIFIER] = "Missing identifier";
 }
-
-// Update Error file to include filename and line number
 
 void Error::ReportError(ErrorType err, std::string fileName, int lineNum){
     std::cout << fileName << ":" << std::left << std::setw(15);

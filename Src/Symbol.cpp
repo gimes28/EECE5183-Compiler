@@ -10,6 +10,9 @@ Symbol::Symbol(){
     this->arrSize = 0;
     this->isGlobal = false;
     this->isIndexed = false;
+    this->llvmValue = nullptr;
+    this->llvmFunction = nullptr;
+    this->llvmAddress = nullptr;
 }
 
 Symbol::Symbol(TokenType tt, std::string id){
@@ -21,6 +24,9 @@ Symbol::Symbol(TokenType tt, std::string id){
     this->arrSize = 0;
     this->isGlobal = false;
     this->isIndexed = false;
+    this->llvmValue = nullptr;
+    this->llvmFunction = nullptr;
+    this->llvmAddress = nullptr;
 }
 
 
@@ -33,6 +39,9 @@ Symbol::Symbol(TokenType tt, std::string id, SymbolType st, Type type){
     this->arrSize = 0;
     this->isGlobal = false;
     this->isIndexed = false;
+    this->llvmValue = nullptr;
+    this->llvmFunction = nullptr;
+    this->llvmAddress = nullptr;
 }
 
 std::string GetTypeName(Type typ){

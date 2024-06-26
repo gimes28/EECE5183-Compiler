@@ -221,7 +221,7 @@ bool Parser::ProgramBody(){
 
         //Outerscope == global
         llvm::Constant *val = llvm::Constant::getNullValue(t);        
-        llvm::Value *addr = new llvm::GlobalVariable(*llvmModule, t, false, llvm::GlobalValue::CommonLinkage, val, it->second.id);
+        llvm::Value *addr = new llvm::GlobalVariable(*llvmModule, t, false, llvm::GlobalValue::ExternalLinkage, val, it->second.id);
 
         // Todo Arrays
 
@@ -396,12 +396,32 @@ bool Parser::ProcedureBody(){
         if (it->second.st != ST_VARIABLE)
             continue;
 
+        // Allocate space
         llvm::Type *t = GetLLVMType(it->second.type);       
         llvm::Value *addr = llvmBuilder->CreateAlloca(t, nullptr, it->second.id);
 
         // Todo Arrays
 
         it->second.llvmAddress = addr;
+    }
+
+    // Code gen: Store argument values in allocated addresses
+    auto arg = func->arg_begin();
+    for(auto &parm : scoper->GetCurrentProcedure().params){
+        // Get symbol in params vector
+        Symbol parameter = scoper->GetSymbol(parm.id);
+
+        // Get arg value and go to next arg
+        llvm::Value *argVal = arg++;
+
+        // Store arg value in address
+        llvmBuilder->CreateStore(argVal, parameter.llvmAddress);
+
+        // Update symbol
+        parameter.llvmValue = argVal;
+        scoper->SetSymbol(parameter.id, parameter, parameter.isGlobal);
+
+        // Todo Arrays
     }
 
     if (!StatementAssist())
@@ -417,9 +437,14 @@ bool Parser::ProcedureBody(){
         return false;
     }
 
-    // Code gen: end function
-    llvm::Value* retVal = llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 0, true));
-    llvmBuilder->CreateRet(retVal);
+    // Verify function
+    bool errFunc = llvm::verifyFunction(*func, &llvm::errs());
+    if (errFunc){
+        errTable.ReportError(ERROR_LLVM_INVALID_FUNCTION, lexer->GetFileName(), lexer->GetLineNumber(), "Error found within procedure");
+        if(debugOptionCodeGen)
+            llvmModule->print(llvm::outs(), nullptr);
+        return false;
+    }   
 
     return true;
 }
@@ -684,6 +709,10 @@ bool Parser::ReturnStatement(){
     else if(!CompatibleTypeCheck(proc, exp)){
         return false;
     }
+
+    // Code gen: Return
+    llvmBuilder->CreateRet(exp.llvmValue);
+
     return true;
 }
 
@@ -852,7 +881,7 @@ bool Parser::Factor(Symbol &fac){
             return false;
         }
     }
-    else if(ProcedureCallAssist(fac)){}
+    else if(ProcedureCallOrName(fac)){}
     else if(IsTokenType(T_MINUS)){
         if (Name(fac) || Number(fac)){
             // Code Gen: Negative
@@ -911,10 +940,14 @@ bool Parser::Name(Symbol &id){
     if (!ArrayIndexAssist(id)){
         return false;
     }
+
+    // Code gen: Name
+    id.llvmValue = llvmBuilder->CreateLoad(GetLLVMType(id.type), id.llvmAddress);
+
     return true;
 }
 
-bool Parser::ArgumentList(Symbol &id){
+bool Parser::ArgumentList(Symbol &id, std::vector<llvm::Value*> &argList){
     DebugParseTrace("Argument List");
 
     Symbol arg;
@@ -941,6 +974,7 @@ bool Parser::ArgumentList(Symbol &id){
             return false;
         }
 
+        argList.push_back(arg.llvmValue);
         ind++;
 
     } while (IsTokenType(T_COMMA));
@@ -1010,7 +1044,7 @@ bool Parser::StatementAssist(){
 }
 
 
-bool Parser::ProcedureCallAssist(Symbol &id){
+bool Parser::ProcedureCallOrName(Symbol &id){
     DebugParseTrace("Procedure Call or Name");
     if (!Identifier(id))
         return false;
@@ -1030,8 +1064,8 @@ bool Parser::ProcedureCallAssist(Symbol &id){
             errTable.ReportError(ERROR_INVALID_PROCEDURE, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\' is not a procedure and cannot be called");
             return false;
         }
-
-        ArgumentList(id);
+        std::vector<llvm::Value*> argList;
+        ArgumentList(id, argList);
 
         if(listError)
             return false; 
@@ -1040,6 +1074,10 @@ bool Parser::ProcedureCallAssist(Symbol &id){
             errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \')\' in procedure call");
             return false;
         }
+
+        // Code gen: Procedure call
+        llvmBuilder->CreateCall(id.llvmFunction, argList);
+
         return true;  
     }
     else{
@@ -1054,6 +1092,9 @@ bool Parser::ProcedureCallAssist(Symbol &id){
         // Check array access
         if(!ArrayIndexAssist(id))
             return false;
+
+        // Code gen: Name
+        id.llvmValue = llvmBuilder->CreateLoad(GetLLVMType(id.type), id.llvmAddress);
     }
     return true;
 }

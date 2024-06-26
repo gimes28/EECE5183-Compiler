@@ -47,7 +47,7 @@ class Parser {
         bool IfStatement();
         bool LoopStatement();
         bool ReturnStatement();
-        bool ArgumentList(Symbol &id);
+        bool ArgumentList(Symbol &id,  std::vector<llvm::Value*> &argList);
         bool Destination(Symbol &id);
         bool Expression(Symbol &exp);
         bool ExpressionPrime(Symbol &exp);
@@ -63,7 +63,7 @@ class Parser {
         
         bool DeclarationAssist();
         bool StatementAssist();
-        bool ProcedureCallAssist(Symbol &id);
+        bool ProcedureCallOrName(Symbol &id);
         bool ArrayIndexAssist(Symbol &id);
 
         bool ArithmeticTypeCheck(Symbol &lhs, Symbol &rhs, Token &op);
