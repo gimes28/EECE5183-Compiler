@@ -198,7 +198,7 @@ bool Parser::ProgramHeader(){
 bool Parser::ProgramBody(){
     DebugParseTrace("Program Body");
 
-    if (!DeclarationAssist())
+    if (!DeclarationBlock())
         return false;
 
     if (!IsTokenType(T_BEGIN)){
@@ -212,23 +212,7 @@ bool Parser::ProgramBody(){
     llvm::BasicBlock *entry = llvm::BasicBlock::Create(*llvmContext, "entry", func);
     llvmBuilder->SetInsertPoint(entry);
 
-    // Code gen: Declared variables
-    for(SymbolTable::iterator it = scoper->GetScopeBegin(); it != scoper->GetScopeEnd(); it++){
-        if (it->second.st != ST_VARIABLE)
-            continue;
-
-        llvm::Type *t = GetLLVMType(it->second.type);
-
-        //Outerscope == global
-        llvm::Constant *val = llvm::Constant::getNullValue(t);        
-        llvm::Value *addr = new llvm::GlobalVariable(*llvmModule, t, false, llvm::GlobalValue::ExternalLinkage, val, it->second.id);
-
-        // Todo Arrays
-
-        it->second.llvmAddress = addr;
-    }
-
-    if (!StatementAssist())
+    if (!StatementBlock())
         return false;
     
     if (!IsTokenType(T_END)){
@@ -252,7 +236,8 @@ bool Parser::Declaration(){
     DebugParseTrace("Declaration");
 
     Symbol decl;
-    decl.isGlobal = IsTokenType(T_GLOBAL);
+    decl.isGlobal = IsTokenType(T_GLOBAL) || scoper->IsGlobalScope(); // Outermost scope is global, regardless if keyword is used or not
+
     if (ProcedureDeclaration(decl)) {} 
     else if (VariableDeclaration(decl)) {}
     else
@@ -377,7 +362,7 @@ bool Parser::Parameter(Symbol &param){
 bool Parser::ProcedureBody(){
     DebugParseTrace("Procedure Body");
 
-    if (!DeclarationAssist())
+    if (!DeclarationBlock())
         return false;
 
     if (!IsTokenType(T_BEGIN)){
@@ -424,7 +409,7 @@ bool Parser::ProcedureBody(){
         // Todo Arrays
     }
 
-    if (!StatementAssist())
+    if (!StatementBlock())
         return false;
     
     if (!IsTokenType(T_END)){
@@ -492,6 +477,21 @@ bool Parser::VariableDeclaration(Symbol &decl){
         }
     }
 
+    // Code gen: Global declared variables
+    if(decl.isGlobal){
+        // Moved global declared variables to variable decleration from program body 
+        // since global variables don't have llvmAddress when accessed inside procedures.
+        llvm::Type *t = GetLLVMType(decl.type);
+
+        //Outerscope == global
+        llvm::Constant *val = llvm::Constant::getNullValue(t);        
+        llvm::Value *addr = new llvm::GlobalVariable(*llvmModule, t, false, llvm::GlobalValue::ExternalLinkage, val, decl.id);
+
+        // Todo Arrays
+
+        decl.llvmAddress = addr;
+    }
+
     scoper->SetSymbol(decl.id, decl, decl.isGlobal);
 
     return true;
@@ -557,6 +557,13 @@ bool Parser::AssignmentStatement(){
     
     if(!CompatibleTypeCheck(dest, exp))
         return false;
+    
+    // Code gen: Assignment statement
+    llvmBuilder->CreateStore(exp.llvmValue, dest.llvmAddress);
+
+    // Update symbol
+    dest.llvmValue = exp.llvmValue;
+    scoper->SetSymbol(dest.id, dest, dest.isGlobal);
 
     return true;    
 }
@@ -600,31 +607,60 @@ bool Parser::IfStatement(){
     if(!Expression(exp))
         return false;
 
+    if(!IsTokenType(T_RPAREN)){
+        errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \')\' in if statement");
+        return false;
+    }
+
     // Check and convert to bool
-    if(exp.type == TYPE_INT)
+    if(exp.type == TYPE_INT){
         exp.type = TYPE_BOOL;
+        exp.llvmValue = llvmBuilder->CreateICmpNE(exp.llvmValue, llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 0, true)));
+    }
     else if (exp.type != TYPE_BOOL){
         errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "If statement expression must evaluate to bool");
         return false;
     }
 
-    if(!IsTokenType(T_RPAREN)){
-        errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \')\' in if statement");
-        return false;
-    }
+    // Code gen: If statement
+    llvm::Function *func = scoper->GetCurrentProcedure().llvmFunction;
+
+    //Set condition value 
+    llvm::Value *cond = llvmBuilder->CreateICmpNE(exp.llvmValue, llvm::ConstantInt::get(*llvmContext, llvm::APInt(1, 0, true)));
+    exp.llvmValue = cond;
+
+    // Create basic blocks for if and else then merge
+    llvm::BasicBlock *ifBlock = llvm::BasicBlock::Create(*llvmContext, "if", func);
+    llvm::BasicBlock *elseBlock = llvm::BasicBlock::Create(*llvmContext, "else", func);
+    llvm::BasicBlock *mergeBlock = llvm::BasicBlock::Create(*llvmContext, "merge", func);
+
+    llvmBuilder->CreateCondBr(cond, ifBlock, elseBlock);
+    llvmBuilder->SetInsertPoint(ifBlock);
 
     if(!IsTokenType(T_THEN)){
         errTable.ReportError(ERROR_INVALID_IF, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'then\' in if statement");
         return false;
     }
 
-    if(!StatementAssist())
+    if(!StatementBlock())
         return false;
+    
+    // Merge if block into merge block if no return
+    if(ifBlock->getTerminator() == nullptr)
+        llvmBuilder->CreateBr(mergeBlock);
+        
+    llvmBuilder->SetInsertPoint(elseBlock);
 
     if(IsTokenType(T_ELSE)){
-        if(!StatementAssist())
+        if(!StatementBlock())
             return false;
     }
+
+    // Merge else block into merge block if no return
+    if(elseBlock->getTerminator() == nullptr)
+        llvmBuilder->CreateBr(mergeBlock);
+        
+    llvmBuilder->SetInsertPoint(mergeBlock);
 
     if(!IsTokenType(T_END)){
         errTable.ReportError(ERROR_INVALID_IF, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'end\' in if statement");
@@ -660,7 +696,12 @@ bool Parser::LoopStatement(){
 
     Symbol exp;
     if(!Expression(exp))
+        return false;    
+
+    if(!IsTokenType(T_RPAREN)){
+        errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \')\' in loop");
         return false;
+    }
 
     // Check and convert to bool
     if(exp.type == TYPE_INT)
@@ -670,12 +711,7 @@ bool Parser::LoopStatement(){
         return false;
     }
 
-    if(!IsTokenType(T_RPAREN)){
-        errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \')\' in loop");
-        return false;
-    }
-
-    if(!StatementAssist())
+    if(!StatementBlock())
         return false;
     
     if(!IsTokenType(T_END)){
@@ -1017,13 +1053,13 @@ bool Parser::String(Symbol &str){
         str.tt = tok.tt;
         str.type = TYPE_STRING;
         // Code Gen: String
-        str.llvmValue = llvmBuilder->CreateGlobalString(tok.val.stringVal);
+        str.llvmValue = llvmBuilder->CreateGlobalStringPtr(tok.val.stringVal);
     }
 
     return IsTokenType(T_STRING_CONST);
 }
 
-bool Parser::DeclarationAssist(){
+bool Parser::DeclarationBlock(){
     while(Declaration()){
         if(!IsTokenType(T_SEMICOLON)){
             errTable.ReportError(ERROR_MISSING_SEMICOLON, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \';\' after declaration");
@@ -1033,7 +1069,7 @@ bool Parser::DeclarationAssist(){
     return true;
 }
 
-bool Parser::StatementAssist(){
+bool Parser::StatementBlock(){
     while(Statement()){
         if(!IsTokenType(T_SEMICOLON)){
             errTable.ReportError(ERROR_MISSING_SEMICOLON, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \';\' after statement");
@@ -1076,7 +1112,7 @@ bool Parser::ProcedureCallOrName(Symbol &id){
         }
 
         // Code gen: Procedure call
-        llvmBuilder->CreateCall(id.llvmFunction, argList);
+        id.llvmValue = llvmBuilder->CreateCall(id.llvmFunction, argList);
 
         return true;  
     }
@@ -1329,22 +1365,26 @@ bool Parser::CompatibleTypeCheck(Symbol &dest, Symbol &exp){
         if(exp.type == TYPE_BOOL){
             comp = true;
             exp.type = TYPE_INT;
+            exp.llvmValue = llvmBuilder->CreateIntCast(exp.llvmValue, llvmBuilder->getInt32Ty(), false);
         }
         else if(exp.type == TYPE_FLOAT){
             comp = true;
             exp.type = TYPE_INT;
+            exp.llvmValue = llvmBuilder->CreateFPToSI(exp.llvmValue, llvmBuilder->getInt32Ty());
         }
     }
     else if(dest.type == TYPE_FLOAT){
         if(exp.type == TYPE_INT){
             comp = true;
             exp.type = TYPE_FLOAT;
+            exp.llvmValue = llvmBuilder->CreateSIToFP(exp.llvmValue, llvmBuilder->getFloatTy());
         }
     }
     else if(dest.type == TYPE_BOOL){
         if(exp.type == TYPE_INT){
             comp = true;
             exp.type = TYPE_BOOL;
+            exp.llvmValue = llvmBuilder->CreateICmpNE(exp.llvmValue, llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 0, true)));
         }
     }
 

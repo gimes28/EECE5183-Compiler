@@ -61,8 +61,8 @@ class Parser {
         bool Name(Symbol &id);
         bool String(Symbol &str);
         
-        bool DeclarationAssist();
-        bool StatementAssist();
+        bool DeclarationBlock();
+        bool StatementBlock();
         bool ProcedureCallOrName(Symbol &id);
         bool ArrayIndexAssist(Symbol &id);
 

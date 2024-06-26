@@ -123,6 +123,10 @@ Symbol ScopeHandler::GetCurrentProcedure(){
     return local->GetSymbol(CUR_PROC);
 }
 
+bool ScopeHandler::IsGlobalScope(){
+    return global == local;
+}
+
 void ScopeHandler::PrintScope(bool glob) {
     if (glob)
         global->PrintSymbolTable();
