@@ -819,8 +819,10 @@ bool Parser::ExpressionPrime(Symbol &exp){
     Token op = tok;
     if (IsTokenType(T_AND) || IsTokenType(T_OR)){
         Symbol rhs;
-        if(!ArithOp(rhs))
+        if(!ArithOp(rhs)){
+            errTable.ReportError(ERROR_MISSING_OPERAND, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
+        }
         
         ExpressionTypeCheck(exp, rhs, op);
 
@@ -849,8 +851,10 @@ bool Parser::ArithOpPrime(Symbol &aro){
 
     if (IsTokenType(T_PLUS) || IsTokenType(T_MINUS)){
         Symbol rhs;
-        if(!Relation(rhs))
+        if(!Relation(rhs)){
+            errTable.ReportError(ERROR_MISSING_OPERAND, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
+        }
         
         if(!ArithmeticTypeCheck(aro, rhs, op))
             return false;
@@ -885,8 +889,10 @@ bool Parser::RelationPrime(Symbol &rel){
         IsTokenType(T_EQUAL) || IsTokenType(T_NOT_EQUAL)){
 
         Symbol rhs;    
-        if(!Term(rhs))
+        if(!Term(rhs)){
+            errTable.ReportError(ERROR_MISSING_OPERAND, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
+        }
 
         // Check and convert type for relation ops
         if(!RelationTypeCheck(rel, rhs, op))
@@ -919,8 +925,10 @@ bool Parser::TermPrime(Symbol &trm){
 
     if(IsTokenType(T_MULTIPLY) || IsTokenType(T_DIVIDE)){
         Symbol rhs;
-        if(!Factor(rhs))
+        if(!Factor(rhs)){
+            errTable.ReportError(ERROR_MISSING_OPERAND, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
+        }
         // Check and convert for *
 
         if(!ArithmeticTypeCheck(trm, rhs, op))

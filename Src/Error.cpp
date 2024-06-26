@@ -45,6 +45,7 @@ Error::Error(){
     errorTable[ERROR_MISSING_STRING_CLOSING] = "Missing string closing quote";
     errorTable[ERROR_MISSING_ASSIGNMENT] = "Missing assignment";
     errorTable[ERROR_MISSING_IDENTIFIER] = "Missing identifier";
+    errorTable[ERROR_MISSING_OPERAND] = "Missing operand";
 }
 
 void Error::ReportError(ErrorType err, std::string fileName, int lineNum){
