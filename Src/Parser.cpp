@@ -188,6 +188,8 @@ bool Parser::ProgramHeader(){
 
     llvmModule = new llvm::Module(id.id, *llvmContext);
 
+    // Insert runtime functions
+
     if(!IsTokenType(T_IS)){
         errTable.ReportError(ERROR_INVALID_HEADER, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'is\' in program header");
         return false;

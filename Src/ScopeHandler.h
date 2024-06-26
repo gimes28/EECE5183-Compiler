@@ -1,6 +1,8 @@
 #ifndef SCOPEHANDLER_H
 #define SCOPEHANDLER_H
 
+#include "llvm/IR/Module.h"
+#include "llvm/IR/IRBuilder.h"
 #include "Scope.h"
 #include "Symbol.h"
 
@@ -24,6 +26,8 @@ class ScopeHandler{
         void SetCurrentProcedure(Symbol proc);
         Symbol GetCurrentProcedure();
         void PrintScope(bool glob);
+
+        void InitRuntimeFunctions(llvm::Module *module, llvm::IRBuilder<> *builder);
     private:
         Scope* global;
         Scope* local;
