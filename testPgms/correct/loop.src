@@ -1,0 +1,24 @@
+Program TestProgram is
+
+Variable num : integer;
+variable num2 : float;
+variable str : string;
+
+procedure testLoop : string(variable i : integer, variable max : integer)
+    variable index : integer;
+    begin
+    for (index := i; index < max)
+        if(index == 5) then return "Loop Complete";
+        else index := index + 1;
+        end if;
+    end for;
+    return "Function Complete";
+end procedure;
+
+begin
+
+num := 0;
+num2 := 10;
+str := testLoop(num, num2);
+
+end program.

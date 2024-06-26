@@ -630,12 +630,12 @@ bool Parser::IfStatement(){
     exp.llvmValue = cond;
 
     // Create basic blocks for if and else then merge
-    llvm::BasicBlock *ifBlock = llvm::BasicBlock::Create(*llvmContext, "if", func);
-    llvm::BasicBlock *elseBlock = llvm::BasicBlock::Create(*llvmContext, "else", func);
-    llvm::BasicBlock *mergeBlock = llvm::BasicBlock::Create(*llvmContext, "merge", func);
+    llvm::BasicBlock *ifThenBlock = llvm::BasicBlock::Create(*llvmContext, "ifThen", func);
+    llvm::BasicBlock *ifElseBlock = llvm::BasicBlock::Create(*llvmContext, "ifElse", func);
+    llvm::BasicBlock *ifMergeBlock = llvm::BasicBlock::Create(*llvmContext, "ifMerge", func);
 
-    llvmBuilder->CreateCondBr(cond, ifBlock, elseBlock);
-    llvmBuilder->SetInsertPoint(ifBlock);
+    llvmBuilder->CreateCondBr(cond, ifThenBlock, ifElseBlock);
+    llvmBuilder->SetInsertPoint(ifThenBlock);
 
     if(!IsTokenType(T_THEN)){
         errTable.ReportError(ERROR_INVALID_IF, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'then\' in if statement");
@@ -646,10 +646,10 @@ bool Parser::IfStatement(){
         return false;
     
     // Merge if block into merge block if no return
-    if(ifBlock->getTerminator() == nullptr)
-        llvmBuilder->CreateBr(mergeBlock);
+    if(llvmBuilder->GetInsertBlock()->getTerminator() == nullptr)
+        llvmBuilder->CreateBr(ifMergeBlock);
         
-    llvmBuilder->SetInsertPoint(elseBlock);
+    llvmBuilder->SetInsertPoint(ifElseBlock);
 
     if(IsTokenType(T_ELSE)){
         if(!StatementBlock())
@@ -657,10 +657,10 @@ bool Parser::IfStatement(){
     }
 
     // Merge else block into merge block if no return
-    if(elseBlock->getTerminator() == nullptr)
-        llvmBuilder->CreateBr(mergeBlock);
+    if(llvmBuilder->GetInsertBlock()->getTerminator() == nullptr)
+        llvmBuilder->CreateBr(ifMergeBlock);
         
-    llvmBuilder->SetInsertPoint(mergeBlock);
+    llvmBuilder->SetInsertPoint(ifMergeBlock);
 
     if(!IsTokenType(T_END)){
         errTable.ReportError(ERROR_INVALID_IF, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'end\' in if statement");
@@ -694,6 +694,17 @@ bool Parser::LoopStatement(){
         return false;
     }
 
+    // Code gen: Loop statement
+    llvm::Function *func = scoper->GetCurrentProcedure().llvmFunction;
+
+    // Create basic blocks for loop header and body then merge
+    llvm::BasicBlock *loopHeaderBlock = llvm::BasicBlock::Create(*llvmContext, "loopHead", func);
+    llvm::BasicBlock *loopBodyBlock = llvm::BasicBlock::Create(*llvmContext, "loopBody", func);
+    llvm::BasicBlock *loopMergeBlock = llvm::BasicBlock::Create(*llvmContext, "loopMerge", func);
+
+    llvmBuilder->CreateBr(loopHeaderBlock);
+    llvmBuilder->SetInsertPoint(loopHeaderBlock);
+
     Symbol exp;
     if(!Expression(exp))
         return false;    
@@ -711,8 +722,24 @@ bool Parser::LoopStatement(){
         return false;
     }
 
+    // Code gen: loop condition
+    llvm::Value *cond = llvmBuilder->CreateICmpNE(exp.llvmValue, llvm::ConstantInt::get(*llvmContext, llvm::APInt(1, 0, true)));
+    exp.llvmValue = cond;
+
+    llvmBuilder->CreateCondBr(cond, loopBodyBlock, loopMergeBlock);
+
+    // Loop body
+    llvmBuilder->SetInsertPoint(loopBodyBlock);
+
     if(!StatementBlock())
         return false;
+
+    // Return to header and recheck condition
+    // Merge else block into merge block if no return
+    if(llvmBuilder->GetInsertBlock()->getTerminator() == nullptr)
+        llvmBuilder->CreateBr(loopHeaderBlock);
+        
+    llvmBuilder->SetInsertPoint(loopMergeBlock);
     
     if(!IsTokenType(T_END)){
         errTable.ReportError(ERROR_INVALID_LOOP, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'end\' in loop");
