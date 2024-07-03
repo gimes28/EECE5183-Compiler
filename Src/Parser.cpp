@@ -189,6 +189,7 @@ bool Parser::ProgramHeader(){
     llvmModule = new llvm::Module(id.id, *llvmContext);
 
     // Insert runtime functions
+    scoper->InitRuntimeFunctions(llvmModule, llvmBuilder);
 
     if(!IsTokenType(T_IS)){
         errTable.ReportError(ERROR_INVALID_HEADER, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'is\' in program header");
@@ -371,15 +372,16 @@ bool Parser::ProcedureBody(){
         errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'begin\' in procedure body");
         return false;
     }
-
-    llvm::Function *func = scoper->GetCurrentProcedure().llvmFunction;
+    
+    Symbol procedure = scoper->GetCurrentProcedure();
+    llvm::Function *func = procedure.llvmFunction;
 
     // Code gen: main entry point 
     llvm::BasicBlock *entry = llvm::BasicBlock::Create(*llvmContext, "entry", func);
     llvmBuilder->SetInsertPoint(entry);
 
     // Code gen: Parms and declared variables
-    for(SymbolTable::iterator it = scoper->GetScopeBegin(); it != scoper->GetScopeEnd(); it++){
+    for(SymbolTable::iterator it = scoper->GetScopeBegin(); it != scoper->GetScopeEnd(); ++it){
         if (it->second.st != ST_VARIABLE)
             continue;
 
@@ -394,9 +396,9 @@ bool Parser::ProcedureBody(){
 
     // Code gen: Store argument values in allocated addresses
     auto arg = func->arg_begin();
-    for(auto &parm : scoper->GetCurrentProcedure().params){
+    for(auto &pmtr : procedure.params){
         // Get symbol in params vector
-        Symbol parameter = scoper->GetSymbol(parm.id);
+        Symbol parameter = scoper->GetSymbol(pmtr.id);
 
         // Get arg value and go to next arg
         llvm::Value *argVal = arg++;
@@ -628,15 +630,15 @@ bool Parser::IfStatement(){
     llvm::Function *func = scoper->GetCurrentProcedure().llvmFunction;
 
     //Set condition value 
-    llvm::Value *cond = llvmBuilder->CreateICmpNE(exp.llvmValue, llvm::ConstantInt::get(*llvmContext, llvm::APInt(1, 0, true)));
-    exp.llvmValue = cond;
+    llvm::Value *ifCond = llvmBuilder->CreateICmpNE(exp.llvmValue, llvm::ConstantInt::get(*llvmContext, llvm::APInt(1, 0, true)));
+    exp.llvmValue = ifCond;
 
     // Create basic blocks for if and else then merge
     llvm::BasicBlock *ifThenBlock = llvm::BasicBlock::Create(*llvmContext, "ifThen", func);
     llvm::BasicBlock *ifElseBlock = llvm::BasicBlock::Create(*llvmContext, "ifElse", func);
     llvm::BasicBlock *ifMergeBlock = llvm::BasicBlock::Create(*llvmContext, "ifMerge", func);
 
-    llvmBuilder->CreateCondBr(cond, ifThenBlock, ifElseBlock);
+    llvmBuilder->CreateCondBr(ifCond, ifThenBlock, ifElseBlock);
     llvmBuilder->SetInsertPoint(ifThenBlock);
 
     if(!IsTokenType(T_THEN)){
@@ -717,18 +719,20 @@ bool Parser::LoopStatement(){
     }
 
     // Check and convert to bool
-    if(exp.type == TYPE_INT)
+    if(exp.type == TYPE_INT){
         exp.type = TYPE_BOOL;
+        exp.llvmValue = llvmBuilder->CreateICmpNE(exp.llvmValue, llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 0, true)));
+    }
     else if (exp.type != TYPE_BOOL){
         errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber(), "Loop statement expression must evaluate to bool");
         return false;
     }
 
     // Code gen: loop condition
-    llvm::Value *cond = llvmBuilder->CreateICmpNE(exp.llvmValue, llvm::ConstantInt::get(*llvmContext, llvm::APInt(1, 0, true)));
-    exp.llvmValue = cond;
+    llvm::Value *loopCond = llvmBuilder->CreateICmpNE(exp.llvmValue, llvm::ConstantInt::get(*llvmContext, llvm::APInt(1, 0, true)));
+    exp.llvmValue = loopCond;
 
-    llvmBuilder->CreateCondBr(cond, loopBodyBlock, loopMergeBlock);
+    llvmBuilder->CreateCondBr(loopCond, loopBodyBlock, loopMergeBlock);
 
     // Loop body
     llvmBuilder->SetInsertPoint(loopBodyBlock);
@@ -800,7 +804,7 @@ bool Parser::Expression(Symbol &exp){
         return false;
 
     if(notToken){
-        if(exp.type != TYPE_BOOL && exp.type != TYPE_INT){
+        if(exp.type != TYPE_BOOL || exp.type != TYPE_INT){
             exp.llvmValue = llvmBuilder->CreateNot(exp.llvmValue);
         }
         else{

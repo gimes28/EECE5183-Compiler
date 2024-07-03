@@ -70,7 +70,7 @@ struct Token{
     {
         std::string stringVal;
         int intVal;
-        double floatVal;
+        float floatVal;
     } val;
 };
 

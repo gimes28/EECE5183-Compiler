@@ -28,7 +28,7 @@ bool putinteger(int i){
     return true;
 }
 
-int getfloat(){
+float getfloat(){
     float f; 
     scanf("%f", &f);
     getchar();
@@ -52,7 +52,7 @@ bool putstring(char* s){
     return true;
 }
 
-// Add underscore due to conflicts with standard C library, can try another method if needed
+// Extended name due to conflicts with standard C library, can try another method if needed
 float squareroot(int i){
     return sqrtf((float)i);
 }

@@ -173,7 +173,7 @@ void ScopeHandler::InitRuntimeFunctions(llvm::Module *module, llvm::IRBuilder<> 
 
     str = "getbool";
     sym = global->GetSymbol(str);
-    funcType = llvm::FunctionType::get(builder->getInt32Ty(), {}, false);
+    funcType = llvm::FunctionType::get(builder->getInt1Ty(), {}, false);
     func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, str, *module);
     sym.llvmFunction = func;
     global->SetSymbol(str, sym);
@@ -215,7 +215,7 @@ void ScopeHandler::InitRuntimeFunctions(llvm::Module *module, llvm::IRBuilder<> 
 
     str = "getstring";
     sym = global->GetSymbol(str);
-    funcType = llvm::FunctionType::get(builder->getFloatTy(), {}, false);
+    funcType = llvm::FunctionType::get(builder->getInt8PtrTy(), {}, false);
     func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, str, *module);
     sym.llvmFunction = func;
     global->SetSymbol(str, sym);
