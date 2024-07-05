@@ -1348,16 +1348,20 @@ bool Parser::RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
         case (T_EQUAL):
             if(lhs.type == TYPE_INT || lhs.type == TYPE_BOOL)
                 lhs.llvmValue = llvmBuilder->CreateICmpEQ(lhs.llvmValue, rhs.llvmValue);
-            else if(lhs.type == TYPE_STRING){}
-                //lhs.llvmValue = StringCompare(lhs, rhs);
+            else if(lhs.type == TYPE_STRING){
+                //std::cout << std::endl << "Compare strings" << std::endl;
+                lhs.llvmValue = StringCompare(lhs, rhs);
+            }
             else   // float
                 lhs.llvmValue = llvmBuilder->CreateFCmpOEQ(lhs.llvmValue, rhs.llvmValue);
             break;
         case (T_NOT_EQUAL):
             if(lhs.type == TYPE_INT || lhs.type == TYPE_BOOL)
                 lhs.llvmValue = llvmBuilder->CreateICmpNE(lhs.llvmValue, rhs.llvmValue);
-            else if(lhs.type == TYPE_STRING){}
-                //lhs.llvmValue = llvmBuilder->CreateNot(StringCompare(lhs, rhs));
+            else if(lhs.type == TYPE_STRING){
+                //std::cout << std::endl << "Compare strings" << std::endl;
+                lhs.llvmValue = llvmBuilder->CreateNot(StringCompare(lhs, rhs));
+            }
             else   // float
                 lhs.llvmValue = llvmBuilder->CreateFCmpONE(lhs.llvmValue, rhs.llvmValue);
             break;
@@ -1484,7 +1488,7 @@ llvm::Type* Parser::GetLLVMType(Type t){
     }
 }
 
-/*
+
 llvm::Value* Parser::StringCompare(Symbol& lhs, Symbol& rhs){
     llvm::Function *func = scoper->GetCurrentProcedure().llvmFunction;
     llvm::BasicBlock *strCompEntry = llvm::BasicBlock::Create(*llvmContext, "StrComp", func);
@@ -1502,8 +1506,8 @@ llvm::Value* Parser::StringCompare(Symbol& lhs, Symbol& rhs){
     //llvm::Value* arr[2] = {llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 0, true)), ind};
 
     // Get pointer to string, then load character
-    llvm::Value* lhsAddr = llvmBuilder->CreateInBoundsGEP(llvmBuilder->getInt32Ty(), lhs.llvmValue, ind);
-    llvm::Value* rhsAddr = llvmBuilder->CreateInBoundsGEP(llvmBuilder->getInt32Ty(), rhs.llvmValue, ind);
+    llvm::Value* lhsAddr = llvmBuilder->CreateInBoundsGEP(llvmBuilder->getInt8Ty(), lhs.llvmValue, ind);
+    llvm::Value* rhsAddr = llvmBuilder->CreateInBoundsGEP(llvmBuilder->getInt8Ty(), rhs.llvmValue, ind);
 
     llvm::Value* lhsVal = llvmBuilder->CreateLoad(llvmBuilder->getInt8Ty(), lhsAddr);
     llvm::Value* rhsVal = llvmBuilder->CreateLoad(llvmBuilder->getInt8Ty(), rhsAddr);
@@ -1528,4 +1532,3 @@ llvm::Value* Parser::StringCompare(Symbol& lhs, Symbol& rhs){
 
     return comp;
 }
-*/

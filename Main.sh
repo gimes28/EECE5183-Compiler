@@ -1,2 +1,3 @@
+#!/bin/sh
 ./Main "$@"
-g++ out.s runtime.o -o a.out
+g++ -no-pie out.s runtime.o -o a.out -lm
