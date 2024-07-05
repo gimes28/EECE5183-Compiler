@@ -1349,9 +1349,7 @@ bool Parser::RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
             if(lhs.type == TYPE_INT || lhs.type == TYPE_BOOL)
                 lhs.llvmValue = llvmBuilder->CreateICmpEQ(lhs.llvmValue, rhs.llvmValue);
             else if(lhs.type == TYPE_STRING){
-                //std::cout << std::endl << "Compare strings" << std::endl;
                 lhs.llvmValue = StringCompare(lhs, rhs);
-            }
             else   // float
                 lhs.llvmValue = llvmBuilder->CreateFCmpOEQ(lhs.llvmValue, rhs.llvmValue);
             break;
@@ -1359,7 +1357,6 @@ bool Parser::RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
             if(lhs.type == TYPE_INT || lhs.type == TYPE_BOOL)
                 lhs.llvmValue = llvmBuilder->CreateICmpNE(lhs.llvmValue, rhs.llvmValue);
             else if(lhs.type == TYPE_STRING){
-                //std::cout << std::endl << "Compare strings" << std::endl;
                 lhs.llvmValue = llvmBuilder->CreateNot(StringCompare(lhs, rhs));
             }
             else   // float
