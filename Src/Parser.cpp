@@ -57,7 +57,7 @@ bool Parser::OutputAssembly(){
 
     bool errMod = llvm::verifyModule(*llvmModule, &llvm::errs());
     if (errMod){
-        errTable.ReportError(ERROR_LLVM_INVALID_MODULE, lexer->GetFileName(), lexer->GetLineNumber());
+        error = errTable.ReportError(ERROR_LLVM_INVALID_MODULE, lexer->GetFileName(), lexer->GetLineNumber());
         if(debugOptionCodeGen)
             llvmModule->print(llvm::outs(), nullptr);
         return false;
@@ -166,9 +166,9 @@ bool Parser::Program(){
         return false;
 
     if (!IsTokenType(T_PERIOD)){
-        errTable.ReportError(ERROR_MISSING_PERIOD, lexer->GetFileName(), lexer->GetLineNumber());
-        return false;
+        errTable.ReportWarning(ERROR_MISSING_PERIOD, lexer->GetFileName(), lexer->GetLineNumber());
     }
+
     if(!IsTokenType(T_EOF))
         return false;
     scoper->ExitScope();
@@ -182,7 +182,7 @@ bool Parser::ProgramHeader(){
         return false;
     Symbol id;
     if (!Identifier(id)){
-        errTable.ReportError(ERROR_INVALID_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\'");
+        error = errTable.ReportError(ERROR_INVALID_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\'");
         return false;
     }
 
@@ -192,7 +192,7 @@ bool Parser::ProgramHeader(){
     scoper->InitRuntimeFunctions(llvmModule, llvmBuilder);
 
     if(!IsTokenType(T_IS)){
-        errTable.ReportError(ERROR_INVALID_HEADER, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'is\' in program header");
+        error = errTable.ReportError(ERROR_INVALID_HEADER, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'is\' in program header");
         return false;
     }
     return true;    
@@ -205,7 +205,7 @@ bool Parser::ProgramBody(){
         return false;
 
     if (!IsTokenType(T_BEGIN)){
-        errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'begin\' in program body");
+        error = errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'begin\' in program body");
         return false;
     }
 
@@ -219,12 +219,12 @@ bool Parser::ProgramBody(){
         return false;
     
     if (!IsTokenType(T_END)){
-        errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'end\' in program body");
+        error = errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'end\' in program body");
         return false;
     }
 
     if (!IsTokenType(T_PROGRAM)){
-        errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'program\' in program body");
+        error = errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'program\' in program body");
         return false;
     }
 
@@ -257,7 +257,7 @@ bool Parser::ProcedureDeclaration(Symbol &decl){
     decl.st = ST_PROCEDURE;
 
     if (scoper->HasSymbol(decl.id, decl.isGlobal)){
-        errTable.ReportError(ERROR_DUPLICATE_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + decl.id + "\'");
+        error = errTable.ReportError(ERROR_DUPLICATE_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + decl.id + "\'");
         return false;
     }
 
@@ -287,7 +287,7 @@ bool Parser::ProcedureDeclaration(Symbol &decl){
 
     if (!decl.isGlobal){
         if (scoper->HasSymbol(decl.id, decl.isGlobal)){
-            errTable.ReportError(ERROR_DUPLICATE_PROCEDURE, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + decl.id + "\'");
+            error = errTable.ReportError(ERROR_DUPLICATE_PROCEDURE, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + decl.id + "\'");
             return false;
         }
         scoper->SetSymbol(decl.id, decl, decl.isGlobal);
@@ -304,32 +304,32 @@ bool Parser::ProcedureHeader(Symbol &decl){
     scoper->NewScope();
 
     if (!Identifier(decl)){
-        errTable.ReportError(ERROR_INVALID_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + decl.id + "\'");
+        error = errTable.ReportError(ERROR_INVALID_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + decl.id + "\'");
         return false;
     }
 
     if(!IsTokenType(T_COLON)){
-        errTable.ReportError(ERROR_MISSING_COLON, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \':\' in procedure header");
+        error = errTable.ReportError(ERROR_MISSING_COLON, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \':\' in procedure header");
         return false;
     }
 
     if(!TypeMark(decl)){
-        errTable.ReportError(ERROR_INVALID_TYPE_MARK, lexer->GetFileName(), lexer->GetLineNumber());
+        error = errTable.ReportError(ERROR_INVALID_TYPE_MARK, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
     
     if(!IsTokenType(T_LPAREN)){
-        errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'(\' in procedure header");
+        error = errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'(\' in procedure header");
         return false;
     }
 
     ParameterList(decl);
     
-    if(listError)
+    if(error)
         return false;
 
     if(!IsTokenType(T_RPAREN)){
-        errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \')\' in procedure header");
+        error = errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \')\' in procedure header");
         return false;
     }
     return true;
@@ -346,8 +346,7 @@ bool Parser::ParameterList(Symbol &decl){
 
     while(IsTokenType(T_COMMA)){
         if (!Parameter(param)) {
-            errTable.ReportError(ERROR_INVALID_PARAMETER, lexer->GetFileName(), lexer->GetLineNumber());
-            listError = true;
+            error = errTable.ReportError(ERROR_INVALID_PARAMETER, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
         }
 
@@ -369,7 +368,7 @@ bool Parser::ProcedureBody(){
         return false;
 
     if (!IsTokenType(T_BEGIN)){
-        errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'begin\' in procedure body");
+        error = errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'begin\' in procedure body");
         return false;
     }
     
@@ -417,19 +416,19 @@ bool Parser::ProcedureBody(){
         return false;
     
     if (!IsTokenType(T_END)){
-        errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'end\' in procedure body");
+        error = errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'end\' in procedure body");
         return false;
     }
 
     if (!IsTokenType(T_PROCEDURE)){
-        errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'procedure\' in procedure body");
+        error = errTable.ReportError(ERROR_INVALID_BODY, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'procedure\' in procedure body");
         return false;
     }
 
     // Verify function
     bool errFunc = llvm::verifyFunction(*func, &llvm::errs());
     if (errFunc){
-        errTable.ReportError(ERROR_LLVM_INVALID_FUNCTION, lexer->GetFileName(), lexer->GetLineNumber(), "Error found within procedure");
+        error = errTable.ReportError(ERROR_LLVM_INVALID_FUNCTION, lexer->GetFileName(), lexer->GetLineNumber(), "Error found within procedure");
         if(debugOptionCodeGen)
             llvmModule->print(llvm::outs(), nullptr);
         return false;
@@ -447,36 +446,36 @@ bool Parser::VariableDeclaration(Symbol &decl){
     decl.st = ST_VARIABLE;
 
     if (!Identifier(decl)){
-        errTable.ReportError(ERROR_INVALID_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + decl.id + "\'");
+        error = errTable.ReportError(ERROR_INVALID_IDENTIFIER, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + decl.id + "\'");
         return false;
     }
 
     // Check duplicate variable
     if(scoper->HasSymbol(decl.id, decl.isGlobal)){
-        errTable.ReportError(ERROR_DUPLICATE_VARIABLE, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + decl.id + "\'");
+        error = errTable.ReportError(ERROR_DUPLICATE_VARIABLE, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + decl.id + "\'");
         return false;
     }
 
     if(!IsTokenType(T_COLON)){
-        errTable.ReportError(ERROR_MISSING_COLON, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \':\' in variable declaration");
+        error = errTable.ReportError(ERROR_MISSING_COLON, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \':\' in variable declaration");
         return false;
     }
 
     if(!TypeMark(decl)){
-        errTable.ReportError(ERROR_INVALID_TYPE_MARK, lexer->GetFileName(), lexer->GetLineNumber());
+        error = errTable.ReportError(ERROR_INVALID_TYPE_MARK, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
     
     if(IsTokenType(T_LBRACKET)){
         if(!Bound(decl)){
-            errTable.ReportError(ERROR_INVALID_BOUND, lexer->GetFileName(), lexer->GetLineNumber());
+            error = errTable.ReportError(ERROR_INVALID_BOUND, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
         }
 
         decl.isArr = true;
 
         if(!IsTokenType(T_RBRACKET)){
-            errTable.ReportError(ERROR_MISSING_BRACKET, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \']\' in variable bound");
+            error = errTable.ReportError(ERROR_MISSING_BRACKET, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \']\' in variable bound");
             return false;
         }
     }
@@ -529,7 +528,7 @@ bool Parser::Bound(Symbol &id){
         return true;
     }
     else{
-        errTable.ReportError(ERROR_INVALID_BOUND, lexer->GetFileName(), lexer->GetLineNumber(), "Bound must be an integer");
+        error = errTable.ReportError(ERROR_INVALID_BOUND, lexer->GetFileName(), lexer->GetLineNumber(), "Bound must be an integer");
         return false;
     }
 }
@@ -579,7 +578,7 @@ bool Parser::Destination(Symbol &id){
         return false;
     
     if(!scoper->HasSymbol(id.id)){
-        errTable.ReportError(ERROR_SCOPE_DECLERATION, lexer->GetFileName(), lexer->GetLineNumber(), "Destination: \'" + id.id + "\'");
+        error = errTable.ReportError(ERROR_SCOPE_DECLERATION, lexer->GetFileName(), lexer->GetLineNumber(), "Destination: \'" + id.id + "\'");
         return false;
     }
 
@@ -587,7 +586,7 @@ bool Parser::Destination(Symbol &id){
 
     // Confirm id is a name
     if(id.st != ST_VARIABLE){
-        errTable.ReportError(ERROR_INVALID_DESTINATION, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\' is not a valid destination");
+        error = errTable.ReportError(ERROR_INVALID_DESTINATION, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\' is not a valid destination");
         return false;
     }
 
@@ -603,7 +602,7 @@ bool Parser::IfStatement(){
         return false;
 
     if(!IsTokenType(T_LPAREN)){
-        errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber());
+        error = errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber());
         return false;
     }
 
@@ -612,7 +611,7 @@ bool Parser::IfStatement(){
         return false;
 
     if(!IsTokenType(T_RPAREN)){
-        errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \')\' in if statement");
+        error = errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \')\' in if statement");
         return false;
     }
 
@@ -622,7 +621,7 @@ bool Parser::IfStatement(){
         exp.llvmValue = llvmBuilder->CreateICmpNE(exp.llvmValue, llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 0, true)));
     }
     else if (exp.type != TYPE_BOOL){
-        errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "If statement expression must evaluate to bool");
+        error = errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "If statement expression must evaluate to bool");
         return false;
     }
 
@@ -642,7 +641,7 @@ bool Parser::IfStatement(){
     llvmBuilder->SetInsertPoint(ifThenBlock);
 
     if(!IsTokenType(T_THEN)){
-        errTable.ReportError(ERROR_INVALID_IF, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'then\' in if statement");
+        error = errTable.ReportError(ERROR_INVALID_IF, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'then\' in if statement");
         return false;
     }
 
@@ -667,12 +666,12 @@ bool Parser::IfStatement(){
     llvmBuilder->SetInsertPoint(ifMergeBlock);
 
     if(!IsTokenType(T_END)){
-        errTable.ReportError(ERROR_INVALID_IF, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'end\' in if statement");
+        error = errTable.ReportError(ERROR_INVALID_IF, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'end\' in if statement");
         return false;
     }
 
     if(!IsTokenType(T_IF)){
-        errTable.ReportError(ERROR_INVALID_IF, lexer->GetFileName(), lexer->GetLineNumber(), "Missing closing \'if\'");
+        error = errTable.ReportError(ERROR_INVALID_IF, lexer->GetFileName(), lexer->GetLineNumber(), "Missing closing \'if\'");
         return false;
     }
 
@@ -686,7 +685,7 @@ bool Parser::LoopStatement(){
         return false;
      
     if (!IsTokenType(T_LPAREN)){
-        errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'(\' in loop");
+        error = errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'(\' in loop");
         return false;   
     }
 
@@ -694,7 +693,7 @@ bool Parser::LoopStatement(){
         return false;
 
     if(!IsTokenType(T_SEMICOLON)){
-        errTable.ReportError(ERROR_MISSING_SEMICOLON, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \':\' in loop");
+        error = errTable.ReportError(ERROR_MISSING_SEMICOLON, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \':\' in loop");
         return false;
     }
 
@@ -714,7 +713,7 @@ bool Parser::LoopStatement(){
         return false;    
 
     if(!IsTokenType(T_RPAREN)){
-        errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \')\' in loop");
+        error = errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \')\' in loop");
         return false;
     }
 
@@ -724,7 +723,7 @@ bool Parser::LoopStatement(){
         exp.llvmValue = llvmBuilder->CreateICmpNE(exp.llvmValue, llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 0, true)));
     }
     else if (exp.type != TYPE_BOOL){
-        errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber(), "Loop statement expression must evaluate to bool");
+        error = errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber(), "Loop statement expression must evaluate to bool");
         return false;
     }
 
@@ -748,12 +747,12 @@ bool Parser::LoopStatement(){
     llvmBuilder->SetInsertPoint(loopMergeBlock);
     
     if(!IsTokenType(T_END)){
-        errTable.ReportError(ERROR_INVALID_LOOP, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'end\' in loop");
+        error = errTable.ReportError(ERROR_INVALID_LOOP, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \'end\' in loop");
         return false;
     }
 
     if(!IsTokenType(T_FOR)){
-        errTable.ReportError(ERROR_INVALID_LOOP, lexer->GetFileName(), lexer->GetLineNumber(), "Missing closing \'for\'");
+        error = errTable.ReportError(ERROR_INVALID_LOOP, lexer->GetFileName(), lexer->GetLineNumber(), "Missing closing \'for\'");
         return false;
     }
     return true;
@@ -772,7 +771,7 @@ bool Parser::ReturnStatement(){
     // Type check match to procedure return type
     Symbol proc = scoper->GetCurrentProcedure();
     if(proc.type == TYPE_UNK){
-        errTable.ReportError(ERROR_INVALID_RETURN, lexer->GetFileName(), lexer->GetLineNumber(), "Return statement must be within procedure");
+        error = errTable.ReportError(ERROR_INVALID_RETURN, lexer->GetFileName(), lexer->GetLineNumber(), "Return statement must be within procedure");
         return false;
     }
     else if(!CompatibleTypeCheck(proc, exp)){
@@ -808,7 +807,7 @@ bool Parser::Expression(Symbol &exp){
             exp.llvmValue = llvmBuilder->CreateNot(exp.llvmValue);
         }
         else{
-            errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber(), "\'not\' operator only defined for int and bool");
+            error = errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber(), "\'not\' operator only defined for int and bool");
             return false;
         }
     }
@@ -826,7 +825,7 @@ bool Parser::ExpressionPrime(Symbol &exp){
     if (IsTokenType(T_AND) || IsTokenType(T_OR)){
         Symbol rhs;
         if(!ArithOp(rhs)){
-            errTable.ReportError(ERROR_MISSING_OPERAND, lexer->GetFileName(), lexer->GetLineNumber());
+            error = errTable.ReportError(ERROR_MISSING_OPERAND, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
         }
         
@@ -858,7 +857,7 @@ bool Parser::ArithOpPrime(Symbol &aro){
     if (IsTokenType(T_PLUS) || IsTokenType(T_MINUS)){
         Symbol rhs;
         if(!Relation(rhs)){
-            errTable.ReportError(ERROR_MISSING_OPERAND, lexer->GetFileName(), lexer->GetLineNumber());
+            error = errTable.ReportError(ERROR_MISSING_OPERAND, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
         }
         
@@ -896,7 +895,7 @@ bool Parser::RelationPrime(Symbol &rel){
 
         Symbol rhs;    
         if(!Term(rhs)){
-            errTable.ReportError(ERROR_MISSING_OPERAND, lexer->GetFileName(), lexer->GetLineNumber());
+            error = errTable.ReportError(ERROR_MISSING_OPERAND, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
         }
 
@@ -932,7 +931,7 @@ bool Parser::TermPrime(Symbol &trm){
     if(IsTokenType(T_MULTIPLY) || IsTokenType(T_DIVIDE)){
         Symbol rhs;
         if(!Factor(rhs)){
-            errTable.ReportError(ERROR_MISSING_OPERAND, lexer->GetFileName(), lexer->GetLineNumber());
+            error = errTable.ReportError(ERROR_MISSING_OPERAND, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
         }
         // Check and convert for *
@@ -954,7 +953,7 @@ bool Parser::Factor(Symbol &fac){
             return false;
         
         if(!IsTokenType(T_RPAREN)){
-            errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \')\' in expression factor");
+            error = errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \')\' in expression factor");
             return false;
         }
     }
@@ -967,12 +966,12 @@ bool Parser::Factor(Symbol &fac){
             else if(fac.type == TYPE_FLOAT)
                 fac.llvmValue = llvmBuilder->CreateFNeg(fac.llvmValue);
             else{
-                errTable.ReportError(ERROR_INVALID_RELATION, lexer->GetFileName(), lexer->GetLineNumber(), "Minus operator only valid on integers or floats");
+                error = errTable.ReportError(ERROR_INVALID_RELATION, lexer->GetFileName(), lexer->GetLineNumber(), "Minus operator only valid on integers or floats");
                 return false;
             }            
         }
         else{
-            errTable.ReportError(ERROR_INVALID_CHARACTER, lexer->GetFileName(), lexer->GetLineNumber(), "Invalid use of \'-\'");
+            error = errTable.ReportError(ERROR_INVALID_CHARACTER, lexer->GetFileName(), lexer->GetLineNumber(), "Invalid use of \'-\'");
             return false;
         }
     }
@@ -1002,7 +1001,7 @@ bool Parser::Name(Symbol &id){
         return false;
         
     if(!scoper->HasSymbol(id.id)){
-        errTable.ReportError(ERROR_SCOPE_DECLERATION, lexer->GetFileName(), lexer->GetLineNumber(), "Name: \'" + id.id + "\'");
+        error = errTable.ReportError(ERROR_SCOPE_DECLERATION, lexer->GetFileName(), lexer->GetLineNumber(), "Name: \'" + id.id + "\'");
         return false;
     }
 
@@ -1010,7 +1009,7 @@ bool Parser::Name(Symbol &id){
 
     //Confirm id is a name
     if (id.st != ST_VARIABLE){
-        errTable.ReportError(ERROR_INVALID_VARIABLE, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\' is not a variable");
+        error = errTable.ReportError(ERROR_INVALID_VARIABLE, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\' is not a variable");
         return false;
     }
 
@@ -1037,13 +1036,13 @@ bool Parser::ArgumentList(Symbol &id, std::vector<llvm::Value*> &argList){
 
         if(!Expression(arg)){
             if(ind != id.params.size())
-                errTable.ReportError(ERROR_INVALID_ASSIGNMENT, lexer->GetFileName(), lexer->GetLineNumber(), "Too few arguments provided to \'" + id.id + "\'");
+                error = errTable.ReportError(ERROR_INVALID_ASSIGNMENT, lexer->GetFileName(), lexer->GetLineNumber(), "Too few arguments provided to \'" + id.id + "\'");
             return false;
         }
 
         // Check number of params
         if(ind >= id.params.size()){
-            errTable.ReportError(ERROR_INVALID_ASSIGNMENT, lexer->GetFileName(), lexer->GetLineNumber(), "Too many arguments provided to \'" + id.id + "\'");
+            error = errTable.ReportError(ERROR_INVALID_ASSIGNMENT, lexer->GetFileName(), lexer->GetLineNumber(), "Too many arguments provided to \'" + id.id + "\'");
             return false;
         }
         // Check type match to param
@@ -1057,7 +1056,7 @@ bool Parser::ArgumentList(Symbol &id, std::vector<llvm::Value*> &argList){
     } while (IsTokenType(T_COMMA));
 
     if(ind != id.params.size()){
-        errTable.ReportError(ERROR_INVALID_ASSIGNMENT, lexer->GetFileName(), lexer->GetLineNumber(), "Too few arguments provided to \'" + id.id + "\'");
+        error = errTable.ReportError(ERROR_INVALID_ASSIGNMENT, lexer->GetFileName(), lexer->GetLineNumber(), "Too few arguments provided to \'" + id.id + "\'");
         return false;
     }
     return true;
@@ -1103,21 +1102,21 @@ bool Parser::String(Symbol &str){
 bool Parser::DeclarationBlock(){
     while(Declaration()){
         if(!IsTokenType(T_SEMICOLON)){
-            errTable.ReportError(ERROR_MISSING_SEMICOLON, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \';\' after declaration");
+            error = errTable.ReportError(ERROR_MISSING_SEMICOLON, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \';\' after declaration");
             return false;
         }
     }
-    return true;
+    return !error;
 }
 
 bool Parser::StatementBlock(){
     while(Statement()){
         if(!IsTokenType(T_SEMICOLON)){
-            errTable.ReportError(ERROR_MISSING_SEMICOLON, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \';\' after statement");
+            error = errTable.ReportError(ERROR_MISSING_SEMICOLON, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \';\' after statement");
             return false;
         }
     }
-    return true;
+    return !error;
 }
 
 
@@ -1127,7 +1126,7 @@ bool Parser::ProcedureCallOrName(Symbol &id){
         return false;
 
     if(!scoper->HasSymbol(id.id)){
-        errTable.ReportError(ERROR_SCOPE_DECLERATION, lexer->GetFileName(), lexer->GetLineNumber(), "Procedure Call: \'" + id.id + "\'");
+        error = errTable.ReportError(ERROR_SCOPE_DECLERATION, lexer->GetFileName(), lexer->GetLineNumber(), "Procedure Call: \'" + id.id + "\'");
         return false;
     }
 
@@ -1138,17 +1137,17 @@ bool Parser::ProcedureCallOrName(Symbol &id){
 
         //Confirm id is a procedure
         if(id.st != ST_PROCEDURE){
-            errTable.ReportError(ERROR_INVALID_PROCEDURE, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\' is not a procedure and cannot be called");
+            error = errTable.ReportError(ERROR_INVALID_PROCEDURE, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\' is not a procedure and cannot be called");
             return false;
         }
         std::vector<llvm::Value*> argList;
         ArgumentList(id, argList);
 
-        if(listError)
+        if(error)
             return false; 
 
         if (!IsTokenType(T_RPAREN)){
-            errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \')\' in procedure call");
+            error = errTable.ReportError(ERROR_MISSING_PAREN, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \')\' in procedure call");
             return false;
         }
 
@@ -1162,7 +1161,7 @@ bool Parser::ProcedureCallOrName(Symbol &id){
 
         //Confirm id is a name/variable
         if(id.st != ST_VARIABLE){
-            errTable.ReportError(ERROR_INVALID_VARIABLE, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\' is not a variable");
+            error = errTable.ReportError(ERROR_INVALID_VARIABLE, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\' is not a variable");
             return false;
         }
 
@@ -1185,11 +1184,11 @@ bool Parser::ArrayIndexAssist(Symbol &id){
             return false;
         
         if(!id.isArr){
-            errTable.ReportError(ERROR_INVALID_ARRAY_INDEX, lexer->GetFileName(), lexer->GetLineNumber(), "/'" +  id.id + "/' is not an array");
+            error = errTable.ReportError(ERROR_INVALID_ARRAY_INDEX, lexer->GetFileName(), lexer->GetLineNumber(), "/'" +  id.id + "/' is not an array");
             return false;
         }
         else if(exp.type != TYPE_INT){
-            errTable.ReportError(ERROR_INVALID_ARRAY_INDEX, lexer->GetFileName(), lexer->GetLineNumber(), "Array index must be an integer");
+            error = errTable.ReportError(ERROR_INVALID_ARRAY_INDEX, lexer->GetFileName(), lexer->GetLineNumber(), "Array index must be an integer");
             return false;
         }
 
@@ -1199,7 +1198,7 @@ bool Parser::ArrayIndexAssist(Symbol &id){
         id.isIndexed = true;
 
         if(!IsTokenType(T_RBRACKET)){
-            errTable.ReportError(ERROR_MISSING_BRACKET, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \']\' in name");
+            error = errTable.ReportError(ERROR_MISSING_BRACKET, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \']\' in name");
             return false;
         }
     }
@@ -1208,7 +1207,7 @@ bool Parser::ArrayIndexAssist(Symbol &id){
 
 bool Parser::ArithmeticTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
     if((lhs.type != TYPE_INT && lhs.type != TYPE_FLOAT) || (rhs.type != TYPE_INT && rhs.type != TYPE_FLOAT)){
-        errTable.ReportError(ERROR_INVALID_TYPE_CHECK, lexer->GetFileName(), lexer->GetLineNumber(), "Arithmetic only defined for int and float");
+        error = errTable.ReportError(ERROR_INVALID_TYPE_CHECK, lexer->GetFileName(), lexer->GetLineNumber(), "Arithmetic only defined for int and float");
         return false;
     }
 
@@ -1256,7 +1255,7 @@ bool Parser::ArithmeticTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
                 lhs.llvmValue = llvmBuilder->CreateFDiv(lhs.llvmValue, rhs.llvmValue);
             break;
         default:
-            errTable.ReportError(ERROR_INVALID_TYPE_CHECK, lexer->GetFileName(), lexer->GetLineNumber(), "Invalid arithmetic operation");
+            error = errTable.ReportError(ERROR_INVALID_TYPE_CHECK, lexer->GetFileName(), lexer->GetLineNumber(), "Invalid arithmetic operation");
             return false;
     }
     return true;
@@ -1308,8 +1307,10 @@ bool Parser::RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
             comp = true;
     }
 
-    if(!comp)
-        errTable.ReportError(ERROR_INVALID_RELATION, lexer->GetFileName(), lexer->GetLineNumber());
+    if(!comp){
+        error = errTable.ReportError(ERROR_INVALID_RELATION, lexer->GetFileName(), lexer->GetLineNumber());
+        return false;
+    }
         
     // Code gen: Relation
     switch(op.tt){
@@ -1348,7 +1349,7 @@ bool Parser::RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
         case (T_EQUAL):
             if(lhs.type == TYPE_INT || lhs.type == TYPE_BOOL)
                 lhs.llvmValue = llvmBuilder->CreateICmpEQ(lhs.llvmValue, rhs.llvmValue);
-            else if(lhs.type == TYPE_STRING){
+            else if(lhs.type == TYPE_STRING)
                 lhs.llvmValue = StringCompare(lhs, rhs);
             else   // float
                 lhs.llvmValue = llvmBuilder->CreateFCmpOEQ(lhs.llvmValue, rhs.llvmValue);
@@ -1356,14 +1357,13 @@ bool Parser::RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
         case (T_NOT_EQUAL):
             if(lhs.type == TYPE_INT || lhs.type == TYPE_BOOL)
                 lhs.llvmValue = llvmBuilder->CreateICmpNE(lhs.llvmValue, rhs.llvmValue);
-            else if(lhs.type == TYPE_STRING){
+            else if(lhs.type == TYPE_STRING)
                 lhs.llvmValue = llvmBuilder->CreateNot(StringCompare(lhs, rhs));
-            }
             else   // float
                 lhs.llvmValue = llvmBuilder->CreateFCmpONE(lhs.llvmValue, rhs.llvmValue);
             break;
         default:
-            errTable.ReportError(ERROR_INVALID_RELATION, lexer->GetFileName(), lexer->GetLineNumber());
+            error = errTable.ReportError(ERROR_INVALID_RELATION, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
     }
     
@@ -1378,8 +1378,10 @@ bool Parser::ExpressionTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
     else if(lhs.type == TYPE_INT && rhs.type == TYPE_INT)
         comp = true;
     
-    if(!comp)
-        errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber(), "Expression operations only defined for int and bool");
+    if(!comp){
+        error = errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber(), "Expression operations only defined for int and bool");
+        return false;
+    }
 
     switch(op.tt){
         case T_AND:
@@ -1389,7 +1391,7 @@ bool Parser::ExpressionTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
             lhs.llvmValue = llvmBuilder->CreateOr(lhs.llvmValue, rhs.llvmValue);
             break;
         default:
-            errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber());
+            error = errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber());
             return false;
     }
     
@@ -1430,9 +1432,10 @@ bool Parser::CompatibleTypeCheck(Symbol &dest, Symbol &exp){
         }
     }
 
-    if(!comp)
-        errTable.ReportError(ERROR_INVALID_ASSIGNMENT, lexer->GetFileName(), lexer->GetLineNumber(), "Incompatible types for " + GetTypeName(dest.type) + " and " + GetTypeName(exp.type));
-    
+    if(!comp){
+        error = errTable.ReportError(ERROR_INVALID_ASSIGNMENT, lexer->GetFileName(), lexer->GetLineNumber(), "Incompatible types for " + GetTypeName(dest.type) + " and " + GetTypeName(exp.type));
+        return false;
+    }
     /*
     Check for valid matching with isArr and isIndexed
     - var = var
@@ -1447,12 +1450,12 @@ bool Parser::CompatibleTypeCheck(Symbol &dest, Symbol &exp){
         if(dest.isArr && exp.isArr){
             // Array indexes must match
             if(dest.isIndexed != exp.isIndexed){
-                errTable.ReportError(ERROR_INVALID_ARRAY_INDEX, lexer->GetFileName(), lexer->GetLineNumber(), "Incompatible matching index arrays");
+                error = errTable.ReportError(ERROR_INVALID_ARRAY_INDEX, lexer->GetFileName(), lexer->GetLineNumber(), "Incompatible matching index arrays");
                 comp = false;
             }
             else if(!dest.isIndexed){
                 if(dest.arrSize != exp.arrSize){
-                    errTable.ReportError(ERROR_INVALID_ARRAY_INDEX, lexer->GetFileName(), lexer->GetLineNumber(), "Array lengths must match");
+                    error = errTable.ReportError(ERROR_INVALID_ARRAY_INDEX, lexer->GetFileName(), lexer->GetLineNumber(), "Array lengths must match");
                     comp = false;
                 }
             }
@@ -1460,7 +1463,7 @@ bool Parser::CompatibleTypeCheck(Symbol &dest, Symbol &exp){
         else{
             // One side is array or array must be indexed
             if((dest.isArr && !dest.isIndexed) || (exp.isArr && !exp.isIndexed)){
-                errTable.ReportError(ERROR_INVALID_ARRAY_INDEX, lexer->GetFileName(), lexer->GetLineNumber(), "Array is not indexed");
+                error = errTable.ReportError(ERROR_INVALID_ARRAY_INDEX, lexer->GetFileName(), lexer->GetLineNumber(), "Array is not indexed");
                 comp = false;
             }
         } 
@@ -1480,7 +1483,7 @@ llvm::Type* Parser::GetLLVMType(Type t){
         case TYPE_STRING:
             return llvmBuilder->getInt8PtrTy();
         default:
-            errTable.ReportError(ERROR_INVALID_TYPE, lexer->GetFileName(), lexer->GetLineNumber());
+            error = errTable.ReportError(ERROR_INVALID_TYPE, lexer->GetFileName(), lexer->GetLineNumber());
             return nullptr;
     }
 }

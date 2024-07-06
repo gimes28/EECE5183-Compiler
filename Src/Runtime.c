@@ -41,9 +41,17 @@ bool putfloat(float f){
 }
 
 char* getstring(){
-    char* s; 
-    scanf("%s", s);
-    getchar();
+    // Create buffer for incoming chars
+    char* s = malloc(256 * sizeof(s)); 
+
+    // Set s to input string
+    fgets(s, 256, stdin);
+
+    // Remove newline char
+    if((strlen(s) > 0) && (s[strlen(s) - 1] == '\n'))
+        s[strlen(s) - 1] = '\0';    
+    
+    // Get string has memory leak
     return s;
 }
 

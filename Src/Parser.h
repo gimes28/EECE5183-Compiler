@@ -26,6 +26,7 @@ class Parser {
         bool debugOptionParser = false;
         bool debugOptionCodeGen = false;
         bool listError = false;
+        bool error = false;
 
         bool IsTokenType(TokenType tok);
         bool Program();

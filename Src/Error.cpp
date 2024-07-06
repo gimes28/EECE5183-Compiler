@@ -48,19 +48,22 @@ Error::Error(){
     errorTable[ERROR_MISSING_OPERAND] = "Missing operand";
 }
 
-void Error::ReportError(ErrorType err, std::string fileName, int lineNum){
+bool Error::ReportError(ErrorType err, std::string fileName, int lineNum){
     std::cout << fileName << ":" << std::left << std::setw(15);
     std::cout << lineNum << "Error: " << errorTable[err] << std::endl;
+    return true;
 }
 
-void Error::ReportError(ErrorType err, std::string fileName, int lineNum, std::string message){
+bool Error::ReportError(ErrorType err, std::string fileName, int lineNum, std::string message){
     std::cout << fileName << ":" << std::left << std::setw(15);
     std::cout << lineNum << "Error: " << errorTable[err] << " -> " << message << std::endl;
+    return true;
 }
 
-void Error::ReportError(ErrorType err){
+bool Error::ReportError(ErrorType err){
     std::cout << std::left << std::setw(15);
     std::cout << "   Error: " << errorTable[err] << std::endl;
+    return true;
 }
 
 void Error::ReportWarning(ErrorType war, std::string fileName, int lineNum){

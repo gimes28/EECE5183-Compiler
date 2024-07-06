@@ -64,9 +64,9 @@ typedef std::unordered_map<ErrorType, std::string> ErrorMap;
 class Error{
     public:
         Error(); 
-        void ReportError(ErrorType err, std::string fileName, int lineNum);
-        void ReportError(ErrorType err, std::string fileName, int lineNum, std::string message);
-        void ReportError(ErrorType err);
+        bool ReportError(ErrorType err, std::string fileName, int lineNum);
+        bool ReportError(ErrorType err, std::string fileName, int lineNum, std::string message);
+        bool ReportError(ErrorType err);
         
         void ReportWarning(ErrorType err, std::string fileName, int lineNum);  
 

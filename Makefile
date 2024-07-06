@@ -8,10 +8,10 @@ SRC = $(wildcard Src/*.cpp)
 LLVM = `llvm-config --cxxflags --ldflags --libs --system-libs`
 
 Main: $(SRC) Runtime
-	$(CC) $(CFLAGS) $(SRC) -o Main $(LLVM) -no-pie
+	$(CC) $(CFLAGS) $(SRC) -o Main $(LLVM)
 
 Runtime: Src/Runtime.c
-	$(C) -c -no-pie Src/Runtime.c -o runtime.o
+	$(C) -c Src/Runtime.c -o runtime.o
 
 RunTest: Main
 	./testPgms/tests.sh

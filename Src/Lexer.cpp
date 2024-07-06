@@ -111,7 +111,7 @@ bool Lexer::LoadFile(std::string fileName){
         lineCount = 1;
         return true;
     }
-    errTable.ReportError(ERROR_FAIL_TO_OPEN, fileName, lineCount);
+    error = errTable.ReportError(ERROR_FAIL_TO_OPEN, fileName, lineCount);
     return false;
 }
 
@@ -166,7 +166,7 @@ Token Lexer::InitScan(){
 Token Lexer::ScanToken(){
     Token tok = Token();
     if(!file.is_open()){
-        errTable.ReportError(ERROR_FAIL_TO_OPEN, fileName, lineCount);
+        error = errTable.ReportError(ERROR_FAIL_TO_OPEN, fileName, lineCount);
         tok.tt = T_UNK;
         return tok;
     }
@@ -189,13 +189,13 @@ Token Lexer::ScanToken(){
                     file.unget();
                     std::string errorChar;
                     errorChar += ch;
-                    errTable.ReportError(ERROR_INVALID_INPUT, fileName, lineCount, "\'" + errorChar + "\'");
+                    error = errTable.ReportError(ERROR_INVALID_INPUT, fileName, lineCount, "\'" + errorChar + "\'");
                 }
             }
             else if (chClass == INVALID){
                 std::string errorChar;
                 errorChar += ch;
-                errTable.ReportError(ERROR_INVALID_CHARACTER, fileName, lineCount, "\'" + errorChar + "\'");
+                error = errTable.ReportError(ERROR_INVALID_CHARACTER, fileName, lineCount, "\'" + errorChar + "\'");
             }
 
         } while(chClass == SPACE || chClass == INVALID);
@@ -318,7 +318,7 @@ Token Lexer::ScanToken(){
                         lineCount++;
                     else if (ch == EOF){
                         tok.tt = T_UNK;
-                        errTable.ReportError(ERROR_MISSING_STRING_CLOSING, fileName, lineCount);
+                        error = errTable.ReportError(ERROR_MISSING_STRING_CLOSING, fileName, lineCount);
                         break;
                     } 
                     tok.val.stringVal += ch;

@@ -37,6 +37,7 @@ class Lexer{
         std::unordered_map<char, CharClass> charClass;    
         int lineCount = 0;
         bool debugOption = false;
+        bool error = false;
 };
 
 #endif
