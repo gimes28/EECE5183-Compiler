@@ -1,5 +1,7 @@
 #include "Error.h"
 
+#include <cstdio>
+#include <cstring>
 #include <iomanip>
 #include <iostream>
 
@@ -37,6 +39,7 @@ Error::Error(){
     errorTable[ERROR_INVALID_DESTINATION] = "Invalid destination";
     errorTable[ERROR_INVALID_OPERATION] = "Invalid operation"; 
     errorTable[ERROR_INVALID_TYPE] = "Invalid type";
+    errorTable[ERROR_ARRAY_INDEX_BOUNDS] = "Array index out of bounds";
     errorTable[ERROR_MISSING_SEMICOLON] = "Missing semicolon";
     errorTable[ERROR_MISSING_COLON] = "Missing colon";
     errorTable[ERROR_MISSING_BRACKET] = "Missing bracket";
@@ -65,6 +68,22 @@ bool Error::ReportError(ErrorType err){
     std::cout << "   Error: " << errorTable[err] << std::endl;
     return true;
 }
+
+// Remove error reporting for out of bounds error for time being. Just use runtime file for basic error 
+/*
+bool Error::ReportError(ErrorType err, std::string fileName, int lineNum, bool isBounds){
+    if(isBounds){
+        std::string error = errorTable[err];
+        char* chError = new char[error.size() + 1];
+        std::strcpy(chError, error.c_str());
+
+        char* chFile = new char[fileName.size() + 1];
+        std::strcpy(chFile, fileName.c_str());
+
+        printf("%s:%-15dError: %s\n", chFile, lineNum, chError);
+    }
+    return true;
+}*/
 
 void Error::ReportWarning(ErrorType war, std::string fileName, int lineNum){
     std::cout << fileName << ":" << std::left << std::setw(15);

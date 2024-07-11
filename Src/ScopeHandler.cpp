@@ -71,6 +71,10 @@ ScopeHandler::ScopeHandler() {
     sym.params.push_back(Symbol(T_IDENTIFIER, "value", ST_VARIABLE, TYPE_INT));
     global->SetSymbol("sqrt", sym);
     sym.isGlobal = true;
+
+    sym = Symbol(T_IDENTIFIER, "outofboundserror", ST_PROCEDURE, TYPE_UNK);
+    global->SetSymbol("outofboundserror", sym);
+    sym.isGlobal = true;
 }
 
 ScopeHandler::~ScopeHandler() {
@@ -231,6 +235,13 @@ void ScopeHandler::InitRuntimeFunctions(llvm::Module *module, llvm::IRBuilder<> 
     sym = global->GetSymbol(str);
     funcType = llvm::FunctionType::get(builder->getFloatTy(), {builder->getInt32Ty()}, false);
     func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "squareroot", *module);
+    sym.llvmFunction = func;
+    global->SetSymbol(str, sym);
+
+    str = "outofboundserror";
+    sym = global->GetSymbol(str);
+    funcType = llvm::FunctionType::get(builder->getVoidTy(), {}, false);
+    func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, str, *module);
     sym.llvmFunction = func;
     global->SetSymbol(str, sym);
 }

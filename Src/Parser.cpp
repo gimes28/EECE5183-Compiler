@@ -386,9 +386,12 @@ bool Parser::ProcedureBody(){
 
         // Allocate space
         llvm::Type *t = GetLLVMType(it->second.type);       
-        llvm::Value *addr = llvmBuilder->CreateAlloca(t, nullptr, it->second.id);
+        
+        // Code gen: Global Array
+        if (it->second.isArr)
+            t = llvm::ArrayType::get(t, it->second.arrSize);
 
-        // Todo Arrays
+        llvm::Value *addr = llvmBuilder->CreateAlloca(t, nullptr, it->second.id);
 
         it->second.llvmAddress = addr;
     }
@@ -486,11 +489,13 @@ bool Parser::VariableDeclaration(Symbol &decl){
         // since global variables don't have llvmAddress when accessed inside procedures.
         llvm::Type *t = GetLLVMType(decl.type);
 
+        // Code gen: Global Array
+        if (decl.isArr)
+            t = llvm::ArrayType::get(t, decl.arrSize);
+
         //Outerscope == global
         llvm::Constant *val = llvm::Constant::getNullValue(t);        
         llvm::Value *addr = new llvm::GlobalVariable(*llvmModule, t, false, llvm::GlobalValue::ExternalLinkage, val, decl.id);
-
-        // Todo Arrays
 
         decl.llvmAddress = addr;
     }
@@ -523,12 +528,12 @@ bool Parser::Bound(Symbol &id){
 
     int val = tok.val.intVal;
 
-    if(Number(num) && num.type == TYPE_INT){
+    if(Number(num) && num.type == TYPE_INT && val > 0){
         id.arrSize = val;
         return true;
     }
     else{
-        error = errTable.ReportError(ERROR_INVALID_BOUND, lexer->GetFileName(), lexer->GetLineNumber(), "Bound must be an integer");
+        error = errTable.ReportError(ERROR_INVALID_BOUND, lexer->GetFileName(), lexer->GetLineNumber(), "Bound must be a positive integer");
         return false;
     }
 }
@@ -565,9 +570,10 @@ bool Parser::AssignmentStatement(){
     llvmBuilder->CreateStore(exp.llvmValue, dest.llvmAddress);
 
     // Update symbol
-    dest.llvmValue = exp.llvmValue;
-    scoper->SetSymbol(dest.id, dest, dest.isGlobal);
-
+    if(!dest.isArr){
+        dest.llvmValue = exp.llvmValue;
+        scoper->SetSymbol(dest.id, dest, dest.isGlobal);
+    }
     return true;    
 }
 
@@ -589,9 +595,18 @@ bool Parser::Destination(Symbol &id){
         error = errTable.ReportError(ERROR_INVALID_DESTINATION, lexer->GetFileName(), lexer->GetLineNumber(), "\'" + id.id + "\' is not a valid destination");
         return false;
     }
-
-    if(!ArrayIndexAssist(id))
+    
+    Symbol ind;
+    if(!ArrayIndexAssist(id, ind))
         return false;
+
+    // Code gen: Array address destination
+    if(id.isIndexed){
+        llvm::Value *zero = llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 0, true));
+        llvm::ArrayRef<llvm::Value *> indList = { zero, ind.llvmValue };
+        id.llvmAddress = llvmBuilder->CreateInBoundsGEP(id.llvmAddress->getType()->getPointerElementType(), id.llvmAddress, indList);
+    }
+
     return true; 
 }
 
@@ -1013,12 +1028,16 @@ bool Parser::Name(Symbol &id){
         return false;
     }
 
-    if (!ArrayIndexAssist(id)){
+    Symbol ind;
+    if (!ArrayIndexAssist(id, ind)){
         return false;
     }
 
     // Code gen: Name
-    id.llvmValue = llvmBuilder->CreateLoad(GetLLVMType(id.type), id.llvmAddress);
+    if (!NameAssist(id, ind)){
+        return false;
+    }
+
 
     return true;
 }
@@ -1166,33 +1185,61 @@ bool Parser::ProcedureCallOrName(Symbol &id){
         }
 
         // Check array access
-        if(!ArrayIndexAssist(id))
+        Symbol ind;
+        if(!ArrayIndexAssist(id, ind))
             return false;
 
         // Code gen: Name
-        id.llvmValue = llvmBuilder->CreateLoad(GetLLVMType(id.type), id.llvmAddress);
+        if (!NameAssist(id, ind))
+            return false;
     }
     return true;
 }
 
 // Handle array index access
-bool Parser::ArrayIndexAssist(Symbol &id){
+bool Parser::ArrayIndexAssist(Symbol &id, Symbol &ind){
     DebugParseTrace("Index");
     if (IsTokenType(T_LBRACKET)){
-        Symbol exp;
-        if(!Expression(exp))
+        if(!Expression(ind))
             return false;
         
         if(!id.isArr){
             error = errTable.ReportError(ERROR_INVALID_ARRAY_INDEX, lexer->GetFileName(), lexer->GetLineNumber(), "/'" +  id.id + "/' is not an array");
             return false;
         }
-        else if(exp.type != TYPE_INT){
+        else if(ind.type != TYPE_INT){
             error = errTable.ReportError(ERROR_INVALID_ARRAY_INDEX, lexer->GetFileName(), lexer->GetLineNumber(), "Array index must be an integer");
             return false;
         }
+        
+        // Create zero and upper bound values to iterate through array
+        llvm::Value *zero = llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 0, true));
+        llvm::Value *arrBound = llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, id.arrSize, true));
 
-        // check exp value < id.arrSize
+        // Check bounding conditions: 0 <= ind.llvmValue < arrSize
+        llvm::Value *lowerBound = llvmBuilder->CreateICmpSGE(ind.llvmValue, zero);
+        llvm::Value *upperBound = llvmBuilder->CreateICmpSLT(ind.llvmValue, arrBound);
+
+        llvm::Value *cond = llvmBuilder->CreateAnd(lowerBound, upperBound);
+
+        llvm::Function *func = scoper->GetCurrentProcedure().llvmFunction;
+        llvm::BasicBlock *boundError = llvm::BasicBlock::Create(*llvmContext, "boundError", func);
+        llvm::BasicBlock *noError = llvm::BasicBlock::Create(*llvmContext, "noError", func);
+
+        // If bounding errors are found, display error message
+        llvmBuilder->CreateCondBr(cond, noError, boundError);
+        llvmBuilder->SetInsertPoint(boundError);
+
+        // Call outofboundserror to llvm block and report error through error class
+        // Commenting this out for now, just reporting error during runtime
+        llvm::Function *errorFunc = scoper->GetSymbol("outofboundserror").llvmFunction;
+        // if (llvmBuilder->GetInsertBlock()->getTerminator() != nullptr)
+        //    error = errTable.ReportError(ERROR_ARRAY_INDEX_BOUNDS, lexer->GetFileName(), lexer->GetLineNumber(), true);
+        llvmBuilder->CreateCall(errorFunc, {});
+
+        // If no bounding error, continue on noError block
+        llvmBuilder->CreateBr(noError);
+        llvmBuilder->SetInsertPoint(noError);
 
         // Array is indexed
         id.isIndexed = true;
@@ -1202,6 +1249,22 @@ bool Parser::ArrayIndexAssist(Symbol &id){
             return false;
         }
     }
+    return true;
+}
+
+// Assist in Code gen for Name
+bool Parser::NameAssist(Symbol &id, Symbol &ind){
+    if (id.isArr){
+        if(!id.isIndexed){
+            error = errTable.ReportError(ERROR_INVALID_ARRAY_INDEX, lexer->GetFileName(), lexer->GetLineNumber(), "Array is not indexed");
+            return false;
+        }
+        llvm::Value *zero = llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 0, true));
+        llvm::ArrayRef<llvm::Value *> indList = { zero, ind.llvmValue };
+        id.llvmAddress = llvmBuilder->CreateInBoundsGEP(id.llvmAddress->getType()->getPointerElementType(), id.llvmAddress, indList);
+    }
+    id.llvmValue = llvmBuilder->CreateLoad(GetLLVMType(id.type), id.llvmAddress);
+
     return true;
 }
 
@@ -1503,7 +1566,6 @@ llvm::Value* Parser::StringCompare(Symbol& lhs, Symbol& rhs){
     llvmBuilder->SetInsertPoint(strCompEntry);
 
     ind = llvmBuilder->CreateLoad(llvmBuilder->getInt32Ty(), indAddr);
-    //llvm::Value* arr[2] = {llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 0, true)), ind};
 
     // Get pointer to string, then load character
     llvm::Value* lhsAddr = llvmBuilder->CreateInBoundsGEP(llvmBuilder->getInt8Ty(), lhs.llvmValue, ind);
