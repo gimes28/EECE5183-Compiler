@@ -1,0 +1,31 @@
+program arrayArgs is
+    variable tmp : integer;
+    variable s : string;
+    variable arr : string[3];
+
+    procedure test : integer(variable x : string[3])
+    begin
+        tmp := putstring(x[0]);
+        tmp := putstring(x[1]);
+        tmp := putstring(x[2]);
+
+        s := getstring();
+        x[0] := s;
+        x[1] := s;
+        x[2] := s;
+
+        tmp := putstring(x[0]);
+        tmp := putstring(x[1]);
+        tmp := putstring(x[2]);
+        tmp := putstring(arr[0]);
+        tmp := putstring(arr[1]);
+        tmp := putstring(arr[2]);
+
+        return 0;
+    end procedure;
+begin
+    arr[0] := "Testing";
+    arr[1] := "Hello";
+    arr[2] := "Testing again";
+    tmp := test(arr);
+end program.

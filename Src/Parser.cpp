@@ -263,8 +263,14 @@ bool Parser::ProcedureDeclaration(Symbol &decl){
 
     // Code gen: function 
     std::vector<llvm::Type*> params;
+    llvm::Type *t = nullptr;
     for (auto &parm : decl.params){
-        params.push_back(GetLLVMType(parm.type));
+        t = GetLLVMType(parm.type);
+        if (parm.isArr){
+            // Pass array as pointer due to arg being passed as an address to an array
+            t = llvm::ArrayType::get(t, parm.arrSize)->getPointerTo();
+        }
+        params.push_back(t);
     }
     llvm::FunctionType *funcType = llvm::FunctionType::get(GetLLVMType(decl.type), params, false);
     llvm::Function *func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, decl.id, *llvmModule);
@@ -398,21 +404,64 @@ bool Parser::ProcedureBody(){
 
     // Code gen: Store argument values in allocated addresses
     auto arg = func->arg_begin();
-    for(auto &pmtr : procedure.params){
+    for(auto &parm : procedure.params){
         // Get symbol in params vector
-        Symbol parameter = scoper->GetSymbol(pmtr.id);
+        Symbol parameter = scoper->GetSymbol(parm.id);
 
         // Get arg value and go to next arg
         llvm::Value *argVal = arg++;
 
         // Store arg value in address
-        llvmBuilder->CreateStore(argVal, parameter.llvmAddress);
+        if(parameter.isArr){
+            // argVal passes llvmAddress of the array;     
+            // Loop through each index in the array and copy values from arg to parameter array
 
-        // Update symbol
-        parameter.llvmValue = argVal;
-        scoper->SetSymbol(parameter.id, parameter, parameter.isGlobal);
+            llvm::BasicBlock *arrayArgCopy = llvm::BasicBlock::Create(*llvmContext, "arrayArgCopy", func);
+            llvm::BasicBlock *arrayArgCopyMerge = llvm::BasicBlock::Create(*llvmContext, "arrayArgCopyMerge", func);
 
-        // Todo Arrays
+            // Set initial value index to 0
+            llvm::Value* indAddr = llvmBuilder->CreateAlloca(llvmBuilder->getInt32Ty(), nullptr, "arrayArgInd");
+            llvm::Value* zero = llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 0, true));
+            llvm::Value* ind = zero;
+            llvmBuilder->CreateStore(ind, indAddr);
+            
+            // Create array upper bound value
+            llvm::Value *arrBound = llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, parameter.arrSize, true));
+
+            // Continue to array argument block
+            llvmBuilder->CreateBr(arrayArgCopy);
+            llvmBuilder->SetInsertPoint(arrayArgCopy);
+
+            ind = llvmBuilder->CreateLoad(llvmBuilder->getInt32Ty(), indAddr);
+
+            // Create pointer to array arg address and load
+            llvm::ArrayRef<llvm::Value *> indList = { zero, ind };
+            llvm::Value* arrayArgAddr = llvmBuilder->CreateInBoundsGEP(argVal->getType()->getPointerElementType(), argVal, indList);
+            llvm::Value* arrayArgVal = llvmBuilder->CreateLoad(GetLLVMType(parameter.type), arrayArgAddr);
+
+            // Create pointer to parameter arg address and store in arg value
+            llvm::Value* parmArgAddr = llvmBuilder->CreateInBoundsGEP(parameter.llvmAddress->getType()->getPointerElementType(), parameter.llvmAddress, indList);
+            llvmBuilder->CreateStore(arrayArgVal, parmArgAddr);
+
+            // Increment ind
+            llvm::Value *i = llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 1, true));
+            ind = llvmBuilder->CreateAdd(ind, i);
+            llvmBuilder->CreateStore(ind, indAddr);
+
+            // Check that ind < parameter.arrSize
+            llvm::Value *cond = llvmBuilder->CreateICmpSLT(ind, arrBound);
+            llvmBuilder->CreateCondBr(cond, arrayArgCopy, arrayArgCopyMerge);
+
+            llvmBuilder->SetInsertPoint(arrayArgCopyMerge);
+        }
+        else{
+            // argVal passes llvmValue;   
+            llvmBuilder->CreateStore(argVal, parameter.llvmAddress);  
+
+            // Update symbol
+            parameter.llvmValue = argVal;
+            scoper->SetSymbol(parameter.id, parameter, parameter.isGlobal);
+        }
     }
 
     if (!StatementBlock())
@@ -1069,7 +1118,14 @@ bool Parser::ArgumentList(Symbol &id, std::vector<llvm::Value*> &argList){
             return false;
         }
 
-        argList.push_back(arg.llvmValue);
+        if (arg.isArr && !arg.isIndexed){
+            // Pass address through arg list for array 
+            argList.push_back(arg.llvmAddress);
+        }
+        else{
+            argList.push_back(arg.llvmValue);
+        }
+
         ind++;
 
     } while (IsTokenType(T_COMMA));
@@ -1256,8 +1312,8 @@ bool Parser::ArrayIndexAssist(Symbol &id, Symbol &ind){
 bool Parser::NameAssist(Symbol &id, Symbol &ind){
     if (id.isArr){
         if(!id.isIndexed){
-            error = errTable.ReportError(ERROR_INVALID_ARRAY_INDEX, lexer->GetFileName(), lexer->GetLineNumber(), "Array is not indexed");
-            return false;
+            // Either whole array is passed through as an arg or array assignment is performed.
+            return true;
         }
         llvm::Value *zero = llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 0, true));
         llvm::ArrayRef<llvm::Value *> indList = { zero, ind.llvmValue };
