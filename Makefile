@@ -13,7 +13,7 @@ Main: $(SRC) Runtime
 Runtime: Src/Runtime.c
 	$(C) -c Src/Runtime.c -o runtime.o
 
-RunTest: Main
+Tests: Main
 	./testPgms/tests.sh
 
 clean:
