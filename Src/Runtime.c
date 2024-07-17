@@ -60,7 +60,7 @@ bool putstring(char* s){
     return true;
 }
 
-// Extended name due to conflicts with standard C library, can try another method if needed
+// Extended name due to conflicts with standard C library
 float squareroot(int i){
     return sqrtf((float)i);
 }

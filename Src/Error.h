@@ -10,10 +10,8 @@ enum ErrorType{
     ERROR_FAIL_TO_OPEN = 2,
     ERROR_EOF = 3,
     ERROR_UNKNOWN = 4,
-
     ERROR_LLVM_INVALID_MODULE = 10,
     ERROR_LLVM_INVALID_FUNCTION = 11,
-
     ERROR_NO_PROGRAM_END = 100,
     ERROR_NO_OCCURRENCE = 101,
     ERROR_INVALID_HEADER = 102,
@@ -47,7 +45,6 @@ enum ErrorType{
     ERROR_INVALID_OPERATION = 130,
     ERROR_INVALID_TYPE = 131,
     ERROR_ARRAY_INDEX_BOUNDS = 132,
-
     ERROR_MISSING_STRING_CLOSING = 1000,
     ERROR_MISSING_IDENTIFIER = 1001,
     ERROR_MISSING_SEMICOLON = 1002,
@@ -68,7 +65,6 @@ class Error{
         bool ReportError(ErrorType err, std::string fileName, int lineNum);
         bool ReportError(ErrorType err, std::string fileName, int lineNum, std::string message);
         bool ReportError(ErrorType err);
-        // bool ReportError(ErrorType err, std::string fileName, int lineNum, bool isBounds);
         
         void ReportWarning(ErrorType err, std::string fileName, int lineNum);  
 

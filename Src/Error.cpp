@@ -70,22 +70,6 @@ bool Error::ReportError(ErrorType err){
     return true;
 }
 
-// Remove error reporting for out of bounds error for time being. Just use runtime file for basic error 
-/*
-bool Error::ReportError(ErrorType err, std::string fileName, int lineNum, bool isBounds){
-    if(isBounds){
-        std::string error = errorTable[err];
-        char* chError = new char[error.size() + 1];
-        std::strcpy(chError, error.c_str());
-
-        char* chFile = new char[fileName.size() + 1];
-        std::strcpy(chFile, fileName.c_str());
-
-        printf("%s:%-15dError: %s\n", chFile, lineNum, chError);
-    }
-    return true;
-}*/
-
 void Error::ReportWarning(ErrorType war, std::string fileName, int lineNum){
     std::cout << fileName << ":" << std::left << std::setw(15);
     std::cout << lineNum << "   Warning: " << errorTable[war] << std::endl;

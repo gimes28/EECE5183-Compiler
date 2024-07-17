@@ -945,7 +945,6 @@ bool Parser::Relation(Symbol &rel){
         return false;
     
     // Check and convert type for relation ops
-
     if(!RelationPrime(rel))
         return false;
 
@@ -1305,8 +1304,6 @@ bool Parser::ArrayIndexAssist(Symbol &id, Symbol &ind){
         // Call outofboundserror to llvm block and report error through error class
         // Commenting this out for now, just reporting error during runtime
         llvm::Function *errorFunc = scoper->GetSymbol("outofboundserror").llvmFunction;
-        // if (llvmBuilder->GetInsertBlock()->getTerminator() != nullptr)
-        //    error = errTable.ReportError(ERROR_ARRAY_INDEX_BOUNDS, lexer->GetFileName(), lexer->GetLineNumber(), true);
         llvmBuilder->CreateCall(errorFunc, {});
 
         // If no bounding error, continue on noError block
