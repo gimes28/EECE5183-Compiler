@@ -1,0 +1,19 @@
+program arrayOps is
+    variable tmp : integer;
+    variable arr : integer[3];
+
+    procedure test : integer(variable x : integer[3])
+    begin
+
+    tmp := putinteger(x[0]);
+    tmp := putinteger(x[1]);
+    tmp := putinteger(x[2]);
+
+	return 0;
+    end procedure;
+begin
+    arr[0] := 1;
+    arr[1] := 2;
+    arr[2] := 6;
+    tmp := test(arr * 5);
+end program.

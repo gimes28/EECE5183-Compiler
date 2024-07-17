@@ -72,6 +72,7 @@ class Parser {
         bool RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &tok);
         bool ExpressionTypeCheck(Symbol &lhs, Symbol &rhs, Token &op);
         bool CompatibleTypeCheck(Symbol &dest, Symbol &exp);
+        bool ArrayTypeCheck(Symbol &lhs, Symbol &rhs, Token &op);
 
         llvm::Value* StringCompare(Symbol& lhs, Symbol& rhs);
         llvm::Type* GetLLVMType(Type t);

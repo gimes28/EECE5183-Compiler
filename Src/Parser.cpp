@@ -1325,12 +1325,17 @@ bool Parser::NameAssist(Symbol &id, Symbol &ind){
 }
 
 bool Parser::ArithmeticTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
+    DebugParseTrace("Arithmetic Type Check");
     if((lhs.type != TYPE_INT && lhs.type != TYPE_FLOAT) || (rhs.type != TYPE_INT && rhs.type != TYPE_FLOAT)){
         error = errTable.ReportError(ERROR_INVALID_TYPE_CHECK, lexer->GetFileName(), lexer->GetLineNumber(), "Arithmetic only defined for int and float");
         return false;
     }
 
-    if(lhs.type == TYPE_INT){
+    if((lhs.isArr && !lhs.isIndexed) || (rhs.isArr && !rhs.isIndexed)){
+        // Perform operation on full array if unindexed
+       return ArrayTypeCheck(lhs, rhs, op);
+    }
+    else if(lhs.type == TYPE_INT){
         if(rhs.type == TYPE_FLOAT){
             // convert lhs to float 
             lhs.type = TYPE_FLOAT;
@@ -1382,10 +1387,15 @@ bool Parser::ArithmeticTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
 
 bool Parser::RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
     // if int is present with float or bool, convert int to respective type
+    DebugParseTrace("Relation Type Check");
 
     bool comp = false;
 
-    if(lhs.type == TYPE_INT) {
+    if((lhs.isArr && !lhs.isIndexed) || (rhs.isArr && !rhs.isIndexed)){
+        // Perform operation on full array if unindexed
+       return ArrayTypeCheck(lhs, rhs, op);
+    }
+    else if(lhs.type == TYPE_INT) {
         if(rhs.type == TYPE_BOOL) {
             comp = true;
             lhs.type = TYPE_BOOL;
@@ -1490,6 +1500,8 @@ bool Parser::RelationTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
 }
 
 bool Parser::ExpressionTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
+    DebugParseTrace("Expression Type Check");
+
     bool comp = false;
 
     if(lhs.type == TYPE_BOOL && rhs.type == TYPE_BOOL)
@@ -1500,6 +1512,11 @@ bool Parser::ExpressionTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
     if(!comp){
         error = errTable.ReportError(ERROR_INVALID_EXPRESSION, lexer->GetFileName(), lexer->GetLineNumber(), "Expression operations only defined for int and bool");
         return false;
+    }
+
+    if((lhs.isArr && !lhs.isIndexed) || (rhs.isArr && !rhs.isIndexed)){
+        // Perform operation on full array if unindexed
+       return ArrayTypeCheck(lhs, rhs, op);
     }
 
     switch(op.tt){
@@ -1518,6 +1535,8 @@ bool Parser::ExpressionTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
 }
 
 bool Parser::CompatibleTypeCheck(Symbol &dest, Symbol &exp){
+    DebugParseTrace("Compatible Type Check");
+
     bool comp = false;
 
     // int == bool
@@ -1589,6 +1608,166 @@ bool Parser::CompatibleTypeCheck(Symbol &dest, Symbol &exp){
     }
     // Both are not arrays
     return comp;
+}
+
+bool Parser::ArrayTypeCheck(Symbol &lhs, Symbol &rhs, Token &op){
+    DebugParseTrace("Array Type Check");
+
+    // Both arrays must be same size
+    if(lhs.isArr && !lhs.isIndexed && rhs.isArr && !rhs.isIndexed && lhs.arrSize != rhs.arrSize ){
+        error = errTable.ReportError(ERROR_INVALID_ARRAY_INDEX, lexer->GetFileName(), lexer->GetLineNumber(), "Unindexed arrays must be same size to perform operations");
+        return false;
+    }
+
+    // Check that array types match before checking individual elements in the array
+    llvm::Type *t = nullptr;
+    Type retType;
+    switch(op.tt){
+        case (T_PLUS):
+        case (T_MINUS):
+        case (T_MULTIPLY):
+        case (T_DIVIDE):
+            if(rhs.type == TYPE_INT || lhs.type == TYPE_INT){
+                retType = TYPE_INT;
+                t = GetLLVMType(TYPE_INT);
+            }
+            else{   // float
+                retType = TYPE_FLOAT;
+                t = GetLLVMType(TYPE_FLOAT);
+            }
+            break;
+        case (T_LESS):
+        case (T_LESS_EQ):
+        case (T_GREATER):
+        case (T_GREATER_EQ):
+        case (T_EQUAL):
+        case (T_NOT_EQUAL):
+            retType = TYPE_BOOL;
+            t = GetLLVMType(TYPE_BOOL);
+            break;
+        case (T_AND):
+        case (T_OR):
+            if(rhs.type == TYPE_INT || lhs.type == TYPE_INT){
+                retType = TYPE_INT;
+                t = GetLLVMType(TYPE_INT);
+            }
+            else{   // bool
+                retType = TYPE_BOOL;
+                t = GetLLVMType(TYPE_BOOL);
+            }
+            break;
+        default:
+            error = errTable.ReportError(ERROR_INVALID_OPERATION, lexer->GetFileName(), lexer->GetLineNumber(), "Invalid operation on unindexed arrays");
+            return false;
+    }
+
+    // int arrSize = (lhs.isArr && !lhs.isIndexed) ? lhs.arrSize : rhs.arrSize;
+    int arrSize = lhs.arrSize;
+    if (!(lhs.isArr && !lhs.isIndexed)) {
+        arrSize = rhs.arrSize;
+    }
+    t = llvm::ArrayType::get(t, arrSize);
+
+    // Create new array to store retVal
+    llvm::Value *retArrayAddr = llvmBuilder->CreateAlloca(t, nullptr, "");
+
+    llvm::Function *func = scoper->GetCurrentProcedure().llvmFunction;
+    llvm::BasicBlock *retArray = llvm::BasicBlock::Create(*llvmContext, "retArray", func);
+    llvm::BasicBlock *retArrayMerge = llvm::BasicBlock::Create(*llvmContext, "retArrayMerge", func);
+
+    // Set initial value index to 0
+    llvm::Value* indAddr = llvmBuilder->CreateAlloca(llvmBuilder->getInt32Ty(), nullptr, "retArrayInd");
+    llvm::Value* zero = llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 0, true));
+    llvm::Value* ind = zero;
+    llvmBuilder->CreateStore(ind, indAddr);
+        
+    // Create array upper bound value
+    llvm::Value *arrBound = llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, arrSize, true));
+
+    // Continue to return array block
+    llvmBuilder->CreateBr(retArray);
+    llvmBuilder->SetInsertPoint(retArray);
+
+    ind = llvmBuilder->CreateLoad(llvmBuilder->getInt32Ty(), indAddr);
+
+    // Create lhs symbol of each element in array
+    Symbol lhsElement(lhs.tt, "", lhs.st, lhs.type);
+
+    // Check if array is indexed, if not, load each element
+    if (lhs.isArr && !lhs.isIndexed){
+
+        llvm::ArrayRef<llvm::Value *> indList = { zero, ind };
+        llvm::Value *lhsAddr = llvmBuilder->CreateInBoundsGEP(lhs.llvmAddress->getType()->getPointerElementType(), lhs.llvmAddress, indList);
+        lhsElement.llvmValue = llvmBuilder->CreateLoad(GetLLVMType(lhs.type), lhsAddr);
+    }   
+    else{
+        lhsElement.llvmValue = lhs.llvmValue;
+    }
+
+    // Create rhs symbol of each element in array
+    Symbol rhsElement(rhs.tt, "", rhs.st, rhs.type);
+    
+    // Check if array is indexed, if not, load each element
+    if (rhs.isArr && !rhs.isIndexed){
+        llvm::ArrayRef<llvm::Value *> indList = { zero, ind };
+        llvm::Value *rhsAddr = llvmBuilder->CreateInBoundsGEP(rhs.llvmAddress->getType()->getPointerElementType(), rhs.llvmAddress, indList);
+        rhsElement.llvmValue = llvmBuilder->CreateLoad(GetLLVMType(rhs.type), rhsAddr);
+    }   
+    else{
+        rhsElement.llvmValue = rhs.llvmValue;
+    }
+
+    switch(op.tt){
+        case (T_PLUS):
+        case (T_MINUS):
+        case (T_MULTIPLY):
+        case (T_DIVIDE):
+            if(!ArithmeticTypeCheck(lhsElement, rhsElement, op))
+                return false;
+            break;
+        case (T_LESS):
+        case (T_LESS_EQ):
+        case (T_GREATER):
+        case (T_GREATER_EQ):
+        case (T_EQUAL):
+        case (T_NOT_EQUAL):
+            if(!RelationTypeCheck(lhsElement, rhsElement, op))
+                return false;
+            break;
+        case (T_AND):
+        case (T_OR):
+            if(!ExpressionTypeCheck(lhsElement, rhsElement, op))
+                return false;
+            break;
+        default:
+            error = errTable.ReportError(ERROR_INVALID_OPERATION, lexer->GetFileName(), lexer->GetLineNumber(), "Invalid operation on unindexed arrays");
+            return false;
+    }
+
+    // Create pointer to retArrayAddr above and store the result of the operation performed
+    llvm::ArrayRef<llvm::Value *> indList = { zero, ind };
+    llvm::Value* retElementAddr = llvmBuilder->CreateInBoundsGEP(retArrayAddr->getType()->getPointerElementType(), retArrayAddr, indList);
+    llvmBuilder->CreateStore(lhsElement.llvmValue, retElementAddr);
+
+    // Increment ind
+    llvm::Value *i = llvm::ConstantInt::get(*llvmContext, llvm::APInt(32, 1, true));
+    ind = llvmBuilder->CreateAdd(ind, i);
+    llvmBuilder->CreateStore(ind, indAddr);
+
+    // Check that ind < parameter.arrSize
+    llvm::Value *cond = llvmBuilder->CreateICmpSLT(ind, arrBound);
+    llvmBuilder->CreateCondBr(cond, retArray, retArrayMerge);
+
+    llvmBuilder->SetInsertPoint(retArrayMerge);
+
+    //Update values for lhs
+    lhs.type = retType;
+    lhs.isArr = true;
+    lhs.arrSize = arrSize;
+    lhs.isIndexed = false;
+    lhs.llvmAddress = retArrayAddr;
+
+    return true;
 }
 
 llvm::Type* Parser::GetLLVMType(Type t){
