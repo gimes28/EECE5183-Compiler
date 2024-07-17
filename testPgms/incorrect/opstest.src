@@ -8,6 +8,7 @@ program opstest is
         variable i : integer;        
         variable res : integer;
     begin
+        s = "testtest";
         if (s <= s) then
             res := -1;
             return res;

@@ -11,7 +11,7 @@ program arrayTest is
     arr[0] := tmp + 1;
     x[1] := tmp - 1;
     arr[1] := tmp + 10;
-    x[6] := tmp * 10;
+    x[2] := tmp * 10;
     arr[2] := tmp * 2;
 
     tmp := putinteger(x[0]);
