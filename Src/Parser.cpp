@@ -40,6 +40,35 @@ bool Parser::IsTokenType(TokenType token){
     return false;
 }
 
+bool Parser::Resync(std::vector<TokenType> &tokVec){
+    DebugParseTrace("Resync");
+
+    // Once an error occurs, find a spot to continue to parse
+    // Continue at of the tokens in checkTok
+
+    std::vector<TokenType> checkTok = { T_PERIOD, T_EOF };
+
+    // Check if current token is present in either vector
+    while(error){
+        for(auto &tt : tokVec){
+            if(tok.tt == tt){
+                error = false;
+                break;
+            }
+        }
+
+        for(auto &tt : checkTok){
+            if(tok.tt == tt)
+                return false;
+        }
+
+        // Skip to next token
+        tok = lexer->InitScan();
+    }
+
+    return true;
+}
+
 void Parser::SetDebugOptionParser(bool debug){
     debugOptionParser = debug;
 }
@@ -320,7 +349,7 @@ bool Parser::ProcedureHeader(Symbol &decl){
     }
 
     if(!TypeMark(decl)){
-        error = errTable.ReportError(ERROR_INVALID_TYPE_MARK, lexer->GetFileName(), lexer->GetLineNumber());
+        error = errTable.ReportError(ERROR_INVALID_TYPE_MARK, lexer->GetFileName(), lexer->GetLineNumber(), "Type for procedure \'" + decl.id + "\' is invalid");
         return false;
     }
     
@@ -483,7 +512,7 @@ bool Parser::VariableDeclaration(Symbol &decl){
     }
 
     if(!TypeMark(decl)){
-        error = errTable.ReportError(ERROR_INVALID_TYPE_MARK, lexer->GetFileName(), lexer->GetLineNumber());
+        error = errTable.ReportError(ERROR_INVALID_TYPE_MARK, lexer->GetFileName(), lexer->GetLineNumber(), "Type for variable \'" + decl.id + "\' is invalid");
         return false;
     }
     
@@ -1150,22 +1179,34 @@ bool Parser::String(Symbol &str){
 }
 
 bool Parser::DeclarationBlock(){
+    std::vector<TokenType> tokVec = { T_BEGIN, T_SEMICOLON };
+
     while(Declaration()){
         if(!IsTokenType(T_SEMICOLON)){
             error = errTable.ReportError(ERROR_MISSING_SEMICOLON, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \';\' after declaration");
             return false;
         }
     }
+
+    if(error && Resync(tokVec))
+        return DeclarationBlock();
+
     return !error;
 }
 
 bool Parser::StatementBlock(){
+    std::vector<TokenType> tokVec = { T_END, T_SEMICOLON };
+
     while(Statement()){
         if(!IsTokenType(T_SEMICOLON)){
             error = errTable.ReportError(ERROR_MISSING_SEMICOLON, lexer->GetFileName(), lexer->GetLineNumber(), "Missing \';\' after statement");
             return false;
         }
     }
+
+    if(error && Resync(tokVec))
+        return StatementBlock();
+
     return !error;
 }
 
@@ -1176,7 +1217,7 @@ bool Parser::ProcedureCallOrName(Symbol &id){
         return false;
 
     if(!scoper->HasSymbol(id.id)){
-        error = errTable.ReportError(ERROR_SCOPE_DECLERATION, lexer->GetFileName(), lexer->GetLineNumber(), "Procedure Call: \'" + id.id + "\'");
+        error = errTable.ReportError(ERROR_INVALID_PROCEDURE, lexer->GetFileName(), lexer->GetLineNumber(), "Procedure Call: \'" + id.id + "\' does not exist");
         return false;
     }
 

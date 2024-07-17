@@ -29,6 +29,8 @@ class Parser {
         bool error = false;
 
         bool IsTokenType(TokenType tok);
+        bool Resync(std::vector<TokenType> &tokVec);
+
         bool Program();
         bool ProgramHeader();
         bool ProgramBody();

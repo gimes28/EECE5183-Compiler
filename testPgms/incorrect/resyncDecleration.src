@@ -1,15 +1,15 @@
-program opstest is 
+program ResyncDecleration is
     variable out : integer;
-    
+
     procedure test : integer()
-        variable b : bool;
-        variable f : float;
+        variable b : booll;     // Error should be thrown, resync to the semicolon at end of line
+        variable f : float;     // Following lines should be parsed correctly
         variable s : string;
-        variable i : integer;        
+        variable i : integer;
         variable res : integer;
     begin
-        s := "testtest";
-        if (s <= s) then
+        s := "Hello";
+        if (s == s) then
             res := -1;
             return res;
         end if;

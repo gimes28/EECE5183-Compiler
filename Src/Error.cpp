@@ -14,6 +14,7 @@ Error::Error(){
     errorTable[ERROR_INVALID_HEADER] = "Invalid header";
     errorTable[ERROR_INVALID_BODY] = "Invalid body";
     errorTable[ERROR_INVALID_DECLARATION] = "Invalid declaration";
+    errorTable[ERROR_INVALID_TYPE_MARK] = "Invalid type";
     errorTable[ERROR_INVALID_VARIABLE_DECLARATION] = "Invalid variable declaration";
     errorTable[ERROR_INVALID_IDENTIFIER] = "Invalid identifier";
     errorTable[ERROR_INVALID_PARAMETER] = "Invalid parameter";
